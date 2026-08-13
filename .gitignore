@@ -1,0 +1,11 @@
+# Node.js — on ne versionne JAMAIS ça
+node_modules/
+npm-debug.log*
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Arduino — fichiers de compilation temporaires
+*.hex
+build/
