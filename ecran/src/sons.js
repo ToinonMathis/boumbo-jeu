@@ -58,3 +58,19 @@ export function jouerSonCorrect() {
 export function jouerSonIncorrect() {
   jouerTonalite({ frequenceDepart: 200, frequenceFin: 80, duree: 0.4, type: 'sawtooth', volume: 0.3 });
 }
+
+// Petit "tic" de suspense joué à chaque rang dévoilé sur le podium.
+export function jouerSonReveal() {
+  jouerTonalite({ frequenceDepart: 440, frequenceFin: 560, duree: 0.1, type: 'triangle', volume: 0.28 });
+}
+
+// Fanfare ascendante pour le dévoilement du grand gagnant (do-mi-sol-do joués
+// en arpège via plusieurs oscillateurs enchaînés).
+export function jouerSonVictoire() {
+  const notes = [523, 659, 784, 1046];
+  notes.forEach((frequence, i) => {
+    setTimeout(() => {
+      jouerTonalite({ frequenceDepart: frequence, duree: 0.32, type: 'triangle', volume: 0.34 });
+    }, i * 140);
+  });
+}

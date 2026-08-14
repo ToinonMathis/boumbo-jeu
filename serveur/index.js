@@ -24,6 +24,10 @@ function demarrer() {
   let reponseActuelle = '';
   let quizCharge = null;
   let indexQuestionCourante = 0;
+  // Vrai une fois que l'animateur a clôturé la partie : l'écran bascule alors
+  // sur le podium. Indépendant du mode de jeu — n'importe quel mode se termine
+  // en passant par /api/partie/terminer.
+  let partieTerminee = false;
 
   function prochaineQuestionDuQuiz() {
     if (!quizCharge) return null;
@@ -58,6 +62,14 @@ function demarrer() {
         phasePartie: 'association',
         equipesAssociees: partie.getEquipes().map((e) => e.nom),
         equipeEnAttente: partie.getEquipeEnAttente(),
+      };
+    }
+
+    if (partieTerminee) {
+      return {
+        phasePartie: 'termine',
+        titreQuiz: quizCharge ? quizCharge.titre : null,
+        classement: jeu.getClassement(),
       };
     }
 
@@ -144,10 +156,16 @@ function demarrer() {
 
     quizCharge = null;
     indexQuestionCourante = 0;
+    partieTerminee = false;
 
     if (corps.quizId) {
       try {
         quizCharge = await recupererQuiz(corps.quizId);
+        // Le cloud renvoie un champ `ordre` : on s'y fie plutôt qu'à l'ordre
+        // du tableau, au cas où il arriverait mélangé.
+        if (Array.isArray(quizCharge.questions)) {
+          quizCharge.questions.sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
+        }
       } catch (erreur) {
         reponse.writeHead(502, { 'Content-Type': 'application/json' });
         reponse.end(JSON.stringify({ erreur: `Impossible de charger le quiz : ${erreur.message}` }));
@@ -181,8 +199,31 @@ function demarrer() {
     reponseActuelle = '';
     quizCharge = null;
     indexQuestionCourante = 0;
+    partieTerminee = false;
     partie = creerPartie();
     diffuser('partie-arretee', {});
+
+    reponse.writeHead(200, { 'Content-Type': 'application/json' });
+    reponse.end(JSON.stringify({ ok: true }));
+  });
+
+  // Clôture générique d'une partie : bascule l'écran sur le podium avec le
+  // classement final. Volontairement indépendante du mode de jeu — un futur
+  // mode se termine en appelant cette même route.
+  route('POST', '/api/partie/terminer', (corps, reponse) => {
+    if (!jeu || partie.getEtat() !== 'prete') {
+      reponse.writeHead(409, { 'Content-Type': 'application/json' });
+      reponse.end(JSON.stringify({ erreur: 'Aucune partie en cours à terminer' }));
+      return;
+    }
+
+    partieTerminee = true;
+    console.log('\nPartie terminée — affichage du podium.');
+    afficherClassement();
+    diffuser('partie-terminee', {
+      classement: jeu.getClassement(),
+      titreQuiz: quizCharge ? quizCharge.titre : null,
+    });
 
     reponse.writeHead(200, { 'Content-Type': 'application/json' });
     reponse.end(JSON.stringify({ ok: true }));

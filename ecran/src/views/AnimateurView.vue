@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useJeu } from '../composables/useJeu';
+import Podium from '../components/Podium.vue';
 
 const {
   phase,
@@ -16,6 +17,7 @@ const {
   classement,
   lancerPartie,
   arreterPartie,
+  terminerPartie,
   ouvrirQuestion,
   validerReponse,
   passerQuestion,
@@ -59,6 +61,11 @@ function onArreterPartie() {
   executer(arreterPartie);
 }
 
+function onTerminerPartie() {
+  if (!confirm('Terminer la partie et afficher le podium ?')) return;
+  executer(terminerPartie);
+}
+
 function onOuvrirQuestionDuQuiz() {
   executer(() => ouvrirQuestion());
 }
@@ -75,7 +82,13 @@ function onOuvrirQuestionLibre() {
   <main class="animateur">
     <span class="marque">b<span class="dome"></span>umb<span class="dome"></span> · animateur</span>
 
-    <button v-if="phase !== 'accueil'" class="btn-stop" @click="onArreterPartie">Arrêter la partie</button>
+    <button
+      v-if="phase !== 'accueil' && phase !== 'podium'"
+      class="btn-stop"
+      @click="onArreterPartie"
+    >
+      Arrêter la partie
+    </button>
 
     <section v-if="phase === 'accueil'" class="bloc">
       <h1>Combien d'équipes ce soir ?</h1>
@@ -101,6 +114,12 @@ function onOuvrirQuestionLibre() {
       <p class="info">En attente : équipe {{ equipeEnAttente }} appuie sur son buzzer</p>
     </section>
 
+    <section v-else-if="phase === 'podium'" class="bloc">
+      <h2>Podium 🏆</h2>
+      <Podium :classement="classement" :titre="titreQuiz" :anime="false" />
+      <button class="btn-primary" @click="executer(arreterPartie)">Nouvelle partie</button>
+    </section>
+
     <section v-else class="bloc">
       <p v-if="titreQuiz" class="titre-quiz">Quiz : {{ titreQuiz }}</p>
 
@@ -113,9 +132,14 @@ function onOuvrirQuestionLibre() {
 
       <template v-else-if="etat === 'fermee'">
         <h2>Question suivante</h2>
+        <p v-if="titreQuiz && !prochaineQuestion" class="info">Quiz terminé — tu peux poser une question bonus ou afficher le podium.</p>
         <textarea v-model="texteQuestion" placeholder="Tape la question ici..." rows="3"></textarea>
         <button class="btn-primary" @click="onOuvrirQuestionLibre">Ouvrir la question</button>
       </template>
+
+      <button v-if="etat === 'fermee'" class="btn-terminer" @click="onTerminerPartie">
+        🏆 Afficher le podium
+      </button>
 
       <template v-else-if="etat === 'attente_buzz'">
         <p class="question-rappel">{{ questionActuelle }}</p>
@@ -278,6 +302,7 @@ textarea {
 .btn-secondaire,
 .btn-correct,
 .btn-incorrect,
+.btn-terminer,
 .btn-stop {
   font-family: 'Baloo 2', cursive;
   font-weight: 700;
@@ -296,6 +321,11 @@ textarea {
   background: transparent;
   color: var(--cream);
   border: 1.5px solid var(--cream-faint);
+}
+.btn-terminer {
+  background: transparent;
+  color: var(--gold);
+  border: 1.5px solid rgba(246, 178, 60, 0.5);
 }
 .actions-reponse {
   display: flex;

@@ -2,6 +2,9 @@
 node_modules/
 npm-debug.log*
 
+# Cache local des quiz (filet de secours hors-ligne, propre à chaque machine)
+.cache-quiz/
+
 # Fichiers système
 .DS_Store
 Thumbs.db

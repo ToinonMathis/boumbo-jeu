@@ -2,6 +2,7 @@
   "name": "boumbo-jeu",
   "private": true,
   "scripts": {
+    "install:all": "npm install && npm --prefix ecran install && npm --prefix serveur install",
     "demo": "npm --prefix ecran run build && npm --prefix serveur start"
   }
 }

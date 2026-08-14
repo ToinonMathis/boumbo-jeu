@@ -2,10 +2,16 @@
 import { ref, onMounted } from 'vue';
 import QRCode from 'qrcode';
 import { useJeu } from '../composables/useJeu';
+import Podium from '../components/Podium.vue';
+import { jouerSonReveal, jouerSonVictoire } from '../sons';
 
-const { phase, equipeEnAttente, equipesAssociees, etat, message, questionActuelle, gagnant, classement } = useJeu({
-  jouerSons: true,
-});
+const { phase, equipeEnAttente, equipesAssociees, etat, message, questionActuelle, gagnant, classement, titreQuiz } =
+  useJeu({ jouerSons: true });
+
+function onRevealPodium({ gagnant: estGagnant }) {
+  if (estGagnant) jouerSonVictoire();
+  else jouerSonReveal();
+}
 
 // TODO(temporaire) : visible par tout le monde y compris les joueurs, donc
 // n'importe qui pourrait scanner et prendre la main sur la télécommande
@@ -46,6 +52,11 @@ onMounted(async () => {
       <span class="marque marque--petite">b<span class="dome"></span>umb<span class="dome"></span></span>
       <p v-for="nom in equipesAssociees" :key="nom" class="equipe-ok">✓ {{ nom }}</p>
       <p class="message message--ouverte">Équipe {{ equipeEnAttente }} : appuie sur ton buzzer</p>
+    </div>
+
+    <div v-else-if="phase === 'podium'" class="podium-ecran">
+      <p class="fin-titre">Résultats de la partie</p>
+      <Podium :classement="classement" :titre="titreQuiz" @reveal="onRevealPodium" />
     </div>
 
     <template v-else>
@@ -197,6 +208,22 @@ onMounted(async () => {
   to {
     opacity: 1;
   }
+}
+.podium-ecran {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+.fin-titre {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+  color: var(--gold);
+  text-align: center;
 }
 .resultat {
   position: relative;

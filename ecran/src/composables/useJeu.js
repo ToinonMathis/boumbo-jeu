@@ -13,7 +13,7 @@ const URL_SERVEUR = import.meta.env.VITE_SERVEUR_URL || `http://${window.locatio
 // connexion SSE : ce sont des appareils différents (TV et téléphone), pas
 // besoin d'un store partagé entre les deux.
 export function useJeu({ jouerSons = false } = {}) {
-  // 'accueil' | 'association' | 'jeu'
+  // 'accueil' | 'association' | 'jeu' | 'podium'
   const phase = ref('accueil');
   const equipeEnAttente = ref(1);
   const equipesAssociees = ref([]);
@@ -40,6 +40,13 @@ export function useJeu({ jouerSons = false } = {}) {
       phase.value = 'association';
       equipesAssociees.value = donnees.equipesAssociees;
       equipeEnAttente.value = donnees.equipeEnAttente;
+      return;
+    }
+
+    if (donnees.phasePartie === 'termine') {
+      phase.value = 'podium';
+      classement.value = donnees.classement;
+      titreQuiz.value = donnees.titreQuiz || null;
       return;
     }
 
@@ -92,6 +99,10 @@ export function useJeu({ jouerSons = false } = {}) {
 
   function arreterPartie() {
     return appelApi('/api/partie/arreter');
+  }
+
+  function terminerPartie() {
+    return appelApi('/api/partie/terminer');
   }
 
   function ouvrirQuestion(texte) {
@@ -181,6 +192,13 @@ export function useJeu({ jouerSons = false } = {}) {
       synchroniser();
     });
 
+    source.addEventListener('partie-terminee', (evenement) => {
+      const donnees = JSON.parse(evenement.data);
+      phase.value = 'podium';
+      classement.value = donnees.classement;
+      titreQuiz.value = donnees.titreQuiz || null;
+    });
+
     source.addEventListener('partie-arretee', () => {
       phase.value = 'accueil';
       equipesAssociees.value = [];
@@ -212,6 +230,7 @@ export function useJeu({ jouerSons = false } = {}) {
     classement,
     lancerPartie,
     arreterPartie,
+    terminerPartie,
     ouvrirQuestion,
     validerReponse,
     passerQuestion,

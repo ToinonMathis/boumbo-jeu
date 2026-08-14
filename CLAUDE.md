@@ -93,6 +93,10 @@ servi" — voir `serveur/jeu.js` pour la machine à états.
   (branchement à chaud compris, plus de port codé en dur).
 - ✅ Vraie logique de jeu (question/réponse orale, buzzer désactivé sur
   mauvaise réponse, skip) testée avec du vrai matériel.
+- ✅ Podium de fin de partie : composant réutilisable
+  `ecran/src/components/Podium.vue` (révélation des rangs du dernier au 1ᵉʳ),
+  déclenché par `POST /api/partie/terminer` — clôture générique, pensée pour
+  accueillir de futurs modes de jeu.
 - ✅ Écran Vue.js : écran public passif (TV) + télécommande animateur
   mobile (`/animateur`), validés avec un vrai téléphone sur le Wi-Fi local.
   Sons synthétisés (Web Audio) et identité visuelle alignée sur la vitrine.
@@ -102,8 +106,42 @@ servi" — voir `serveur/jeu.js` pour la machine à états.
 - ✅ `boumbo-cloud` : backend Express/PostgreSQL déployé sur Railway,
   Supabase Auth intégré, dashboard Vue.js avec gestion de quiz (CRUD) pour
   les gérants.
-- ⏳ Pont entre le contenu cloud (quiz préparés dans le dashboard) et le
-  jeu local (aujourd'hui les questions sont tapées à la volée par
-  l'animateur, pas encore chargées depuis un quiz existant).
+- ✅ Pont contenu cloud → jeu local : l'animateur peut lancer une partie sur
+  un quiz préparé dans le dashboard (liste + chargement via `serveur/cloud.js`).
+  Cache local des quiz (`serveur/.cache-quiz/`, non versionné) : la soirée
+  reste jouable même si le Wi-Fi du lieu tombe. Vérifié contre le cloud de prod.
 - ⏳ Onboarding réel des gérants (actuellement manuel via script/migration).
 - ⏳ Facturation (Stripe) : volontairement hors MVP.
+
+## Pistes de valeur SaaS (futur)
+Idées pour justifier l'abonnement récurrent (la valeur qui « revient chaque
+mois »), à creuser plus tard :
+- **Bibliothèque de contenu qui ne s'épuise jamais** : packs de quiz / blind
+  tests prêts à l'emploi, renouvelés régulièrement (thèmes, saisons, décennies)
+  pour que le gérant ait toujours une soirée prête sans rien écrire. Débloqué
+  par le pont contenu cloud → jeu local (voir ⏳ ci-dessus).
+- **Classements persistants** : garder les scores d'une soirée à l'autre
+  (championnat du mois, ligue, équipes qui se recréent) pour faire revenir les
+  habitués — ce que le hardware seul ne sait pas faire.
+- **Aide à remplir la salle, via les stats** : stats actionnables pour le
+  gérant (soirées qui remplissent, thèmes qui marchent, participation) et
+  supports de promo (affiches / posts auto) pour attirer du monde les soirs
+  creux.
+
+## Cible hardware V1 (buzzers sans-fil)
+Aujourd'hui les buzzers sont des cartes **Arduino / Elegoo Uno R3 câblées en
+USB** (firmware de test dans `firmware/`). Cible pour un vrai déploiement en bar :
+- **Microcontrôleur** : passer à un **ESP32-C3** (radio + batterie + basse
+  conso, compatible Arduino). L'Uno R3 n'a ni radio ni gestion batterie.
+- **Sans-fil** : buzzers en **ESP-NOW** vers un **ESP32 récepteur branché en
+  USB** sur la Pi, qui ré-émet les lignes `BUZZ @ ... ms` sur le port série.
+  Le serveur (`serveur/buzzers.js`) reste alors quasi inchangé.
+- **Boîtier** : bouton arcade robuste, coque solide, LiPo + charge USB-C, deep
+  sleep réveillé par le bouton.
+- ⚠️ **Changement de logique à prévoir avec le sans-fil** : aujourd'hui le
+  gagnant est décidé par l'**ordre d'arrivée au serveur** (OK en USB, latence
+  ~nulle). En radio la latence est variable → il faut raisonner en **temps de
+  réaction** : le récepteur diffuse « question ouverte » à tous les buzzers,
+  chaque buzzer mesure le délai `appui − ouverture` **à bord**, et le serveur
+  attend une courte fenêtre (~150 ms) puis retient le plus petit délai. C'est
+  ce qui rend enfin *vrai* le principe « horodaté à la source » (voir en-tête).
