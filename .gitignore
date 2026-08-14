@@ -9,3 +9,10 @@ Thumbs.db
 # Arduino — fichiers de compilation temporaires
 *.hex
 build/
+
+# Config locale de l'outil Claude Code — spécifique à la machine
+.claude/settings.local.json
+
+# Secrets / config locale — jamais versionnés
+.env
+.env.local

@@ -1,0 +1,26 @@
+:root {
+  --night: #23122b;
+  --night-2: #2d1837;
+  --night-3: #361d43;
+  --cream: #f7eee3;
+  --cream-dim: rgba(247, 238, 227, 0.7);
+  --cream-faint: rgba(247, 238, 227, 0.14);
+  --red: #f0392b;
+  --red-lo: #c0231c;
+  --red-hi: #ff6a54;
+  --gold: #f6b23c;
+  --teal: #35c2c9;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--night);
+  color: var(--cream);
+  font-family: 'Figtree', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

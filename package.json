@@ -1,0 +1,7 @@
+{
+  "name": "boumbo-jeu",
+  "private": true,
+  "scripts": {
+    "demo": "npm --prefix ecran run build && npm --prefix serveur start"
+  }
+}
