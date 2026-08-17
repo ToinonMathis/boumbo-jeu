@@ -49,6 +49,38 @@ function demarrer() {
     console.log('------------------\n');
   }
 
+  // Bascule la partie sur le podium (classement final) et le diffuse à l'écran
+  // comme à la télécommande. Utilisée aussi bien par l'action manuelle de
+  // l'animateur que par la fin automatique d'un quiz.
+  function terminerPartie() {
+    partieTerminee = true;
+    console.log('\nPartie terminée — affichage du podium.');
+    afficherClassement();
+    diffuser('partie-terminee', {
+      classement: jeu.getClassement(),
+      titreQuiz: quizCharge ? quizCharge.titre : null,
+    });
+  }
+
+  // Fin automatique : dès qu'un quiz chargé n'a plus de question à jouer, on
+  // affiche le podium sans attendre d'action de l'animateur. Ne concerne que
+  // les parties sur quiz — en questions libres, il n'y a pas de fin prédéfinie.
+  // Court délai pour laisser voir le résultat de la dernière question avant que
+  // le podium ne prenne le relais.
+  const DELAI_FIN_AUTO_MS = 2500;
+  function terminerSiQuizEpuise() {
+    if (!quizCharge || prochaineQuestionDuQuiz()) return;
+
+    const jeuAuMomentDeLaFin = jeu;
+    setTimeout(() => {
+      // Ne rien faire si la partie a été arrêtée ou relancée entre-temps, ou
+      // déjà terminée manuellement par l'animateur.
+      if (jeu === jeuAuMomentDeLaFin && !partieTerminee) {
+        terminerPartie();
+      }
+    }, DELAI_FIN_AUTO_MS);
+  }
+
   // Snapshot complet, utilisé par l'écran et la télécommande animateur pour se
   // resynchroniser à l'ouverture ou après une reconnexion (le flux SSE seul ne
   // rattrape pas l'historique).
@@ -217,13 +249,7 @@ function demarrer() {
       return;
     }
 
-    partieTerminee = true;
-    console.log('\nPartie terminée — affichage du podium.');
-    afficherClassement();
-    diffuser('partie-terminee', {
-      classement: jeu.getClassement(),
-      titreQuiz: quizCharge ? quizCharge.titre : null,
-    });
+    terminerPartie();
 
     reponse.writeHead(200, { 'Content-Type': 'application/json' });
     reponse.end(JSON.stringify({ ok: true }));
@@ -281,6 +307,12 @@ function demarrer() {
       diffuser('reponse-incorrecte', { joueur: equipe.nom });
     }
 
+    // La question vient de se clore (bonne réponse ou plus personne) : si
+    // c'était la dernière du quiz, on enchaîne directement sur le podium.
+    if (jeu.getEtat() === 'fermee') {
+      terminerSiQuizEpuise();
+    }
+
     reponse.writeHead(200, { 'Content-Type': 'application/json' });
     reponse.end(JSON.stringify({ ok: true }));
   });
@@ -297,6 +329,9 @@ function demarrer() {
     reponseActuelle = '';
     console.log('Question passée.');
     diffuser('question-terminee', { resultat: 'skip' });
+
+    // Si c'était la dernière question du quiz, on affiche le podium.
+    terminerSiQuizEpuise();
 
     reponse.writeHead(200, { 'Content-Type': 'application/json' });
     reponse.end(JSON.stringify({ ok: true }));

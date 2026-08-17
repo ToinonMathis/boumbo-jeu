@@ -132,7 +132,6 @@ function onOuvrirQuestionLibre() {
 
       <template v-else-if="etat === 'fermee'">
         <h2>Question suivante</h2>
-        <p v-if="titreQuiz && !prochaineQuestion" class="info">Quiz terminé — tu peux poser une question bonus ou afficher le podium.</p>
         <textarea v-model="texteQuestion" placeholder="Tape la question ici..." rows="3"></textarea>
         <button class="btn-primary" @click="onOuvrirQuestionLibre">Ouvrir la question</button>
       </template>
