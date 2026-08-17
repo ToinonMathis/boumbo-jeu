@@ -16,6 +16,9 @@ const {
   gagnant,
   classement,
   titreQuiz,
+  joueurQuiRepond,
+  photoQuiRepond,
+  buzzCompteur,
 } = useJeu({ jouerSons: true });
 
 function onRevealPodium({ gagnant: estGagnant }) {
@@ -96,11 +99,17 @@ onMounted(async () => {
         {{ equipeEnAttente }} : appuie sur ton buzzer pour rejoindre
       </div>
       <div v-else-if="etat === 'fermee'" class="message">{{ message }}</div>
-      <div v-else-if="etat === 'attente_buzz' || etat === 'en_reponse'" class="question-en-cours">
+      <div v-else-if="etat === 'attente_buzz'" class="question-en-cours">
         <p class="question-texte">{{ questionActuelle }}</p>
-        <p class="message" :class="etat === 'attente_buzz' ? 'message--ouverte' : 'message--reponse'">
-          {{ message }}
-        </p>
+        <p class="message message--ouverte">{{ message }}</p>
+      </div>
+
+      <div v-else-if="etat === 'en_reponse'" :key="buzzCompteur" class="buzz-spectacle">
+        <div class="buzz-flash" aria-hidden="true"></div>
+        <p class="buzz-mot">BUZZ&nbsp;!</p>
+        <img v-if="photoQuiRepond" :src="photoQuiRepond" class="buzz-photo" alt="" />
+        <p class="buzz-nom">{{ joueurQuiRepond }}</p>
+        <p class="buzz-repond">répond…</p>
       </div>
       <div v-else-if="etat === 'resultat'" class="resultat">
         <p class="gagnant">{{ gagnant }} !</p>
@@ -354,6 +363,96 @@ onMounted(async () => {
   }
   to {
     opacity: 1;
+  }
+}
+
+/* Spectacle du buzz : quand une équipe claque son buzzer. */
+.buzz-spectacle {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+.buzz-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, rgba(246, 178, 60, 0.55), rgba(240, 57, 43, 0.25) 40%, transparent 70%);
+  animation: buzz-flash 0.5s ease-out forwards;
+}
+@keyframes buzz-flash {
+  0% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.buzz-mot {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  font-size: clamp(3rem, 10vw, 7rem);
+  color: var(--gold);
+  text-shadow: 0 4px 0 var(--red-lo), 0 0 40px rgba(246, 178, 60, 0.6);
+  animation: buzz-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes buzz-pop {
+  0% {
+    transform: scale(0.3) rotate(-6deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15) rotate(3deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+.buzz-photo {
+  width: clamp(120px, 22vw, 220px);
+  height: clamp(120px, 22vw, 220px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid var(--gold);
+  box-shadow: 0 0 50px rgba(246, 178, 60, 0.5);
+  animation: buzz-photo-in 0.5s ease-out both;
+}
+@keyframes buzz-photo-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.buzz-nom {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  color: var(--cream);
+}
+.buzz-repond {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+  color: var(--teal);
+  animation: pulse 1s infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .buzz-flash,
+  .buzz-mot,
+  .buzz-photo {
+    animation: none;
+  }
+  .buzz-flash {
+    opacity: 0;
   }
 }
 .podium-ecran {

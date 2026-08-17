@@ -28,6 +28,9 @@ export function useJeu({ jouerSons = false } = {}) {
   const prochaineQuestion = ref(null);
   const gagnant = ref(null);
   const classement = ref([]);
+  const joueurQuiRepond = ref('');
+  const photoQuiRepond = ref(null);
+  const buzzCompteur = ref(0); // incrémenté à chaque buzz, pour rejouer l'animation
 
   let source;
 
@@ -59,6 +62,9 @@ export function useJeu({ jouerSons = false } = {}) {
     titreQuiz.value = donnees.jeu.titreQuiz || null;
     prochaineQuestion.value = donnees.jeu.prochaineQuestion || null;
     classement.value = donnees.jeu.classement;
+
+    joueurQuiRepond.value = donnees.jeu.joueurQuiRepond || '';
+    photoQuiRepond.value = donnees.jeu.photoJoueurQuiRepond || null;
 
     if (donnees.jeu.etat === 'fermee') message.value = 'En attente de la prochaine question...';
     else if (donnees.jeu.etat === 'attente_buzz') message.value = 'À vos buzzers !';
@@ -185,8 +191,11 @@ export function useJeu({ jouerSons = false } = {}) {
     });
 
     source.addEventListener('joueur-repond', (evenement) => {
-      const { joueur } = JSON.parse(evenement.data);
+      const { joueur, photo } = JSON.parse(evenement.data);
       etat.value = 'en_reponse';
+      joueurQuiRepond.value = joueur;
+      photoQuiRepond.value = photo || null;
+      buzzCompteur.value += 1;
       message.value = `${joueur} répond...`;
       if (jouerSons) jouerSonBuzz();
     });
@@ -257,6 +266,9 @@ export function useJeu({ jouerSons = false } = {}) {
     prochaineQuestion,
     gagnant,
     classement,
+    joueurQuiRepond,
+    photoQuiRepond,
+    buzzCompteur,
     demarrerPartie,
     preparerEquipe,
     lancerJeu,

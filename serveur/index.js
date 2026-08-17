@@ -132,6 +132,7 @@ function demarrer() {
         titreQuiz: quizCharge ? quizCharge.titre : null,
         prochaineQuestion: jeu.getEtat() === 'fermee' ? prochaineQuestionDuQuiz() : null,
         joueurQuiRepond: equipeQuiRepond ? equipeQuiRepond.nom : null,
+        photoJoueurQuiRepond: equipeQuiRepond ? equipeQuiRepond.photo || null : null,
         classement: classementAvecPhotos(),
       },
     };
@@ -179,7 +180,7 @@ function demarrer() {
     const resultat = jeu.enregistrerBuzz(equipe.id, horodatage);
     if (resultat) {
       console.log(`\n${equipe.nom} a buzzé le premier ! (@ ${horodatage} ms)`);
-      diffuser('joueur-repond', { joueur: equipe.nom });
+      diffuser('joueur-repond', { joueur: equipe.nom, photo: equipe.photo || null });
     }
   });
 
