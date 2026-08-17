@@ -33,14 +33,16 @@ function creerJeu(joueurs) {
   }
 
   // À appeler par l'animateur une fois la réponse orale entendue.
-  function validerReponse(estCorrecte) {
+  // `gain` : nombre de points (ou de cases, selon le mode de jeu) gagnés sur
+  // une bonne réponse — 1 par défaut pour le quiz classique.
+  function validerReponse(estCorrecte, gain = 1) {
     if (etat !== 'en_reponse') return null;
 
     const joueurId = joueurQuiRepond;
     joueurQuiRepond = null;
 
     if (estCorrecte) {
-      classement.set(joueurId, classement.get(joueurId) + 1);
+      classement.set(joueurId, classement.get(joueurId) + gain);
       etat = 'fermee';
       return { resultat: 'correct', joueurId };
     }
@@ -54,6 +56,17 @@ function creerJeu(joueurs) {
 
     etat = 'attente_buzz';
     return { resultat: 'incorrect', joueurId, plusPersonne: false };
+  }
+
+  // Annule l'élimination d'un joueur sur la question en cours (effet "Joker"
+  // du chemin des étoiles). Rouvre la question si elle venait tout juste de se
+  // fermer faute de joueur restant — à appeler immédiatement après un
+  // `validerReponse(false)` qui a renvoyé `plusPersonne: true`, jamais plus tard.
+  function annulerElimination(joueurId) {
+    if (etat === 'fermee' && joueursElimines.has(joueurId) && joueursElimines.size >= joueurs.length) {
+      etat = 'attente_buzz';
+    }
+    joueursElimines.delete(joueurId);
   }
 
   // L'animateur peut passer la question si personne ne trouve, ou à tout moment.
@@ -97,6 +110,7 @@ function creerJeu(joueurs) {
     demarrerQuestion,
     enregistrerBuzz,
     validerReponse,
+    annulerElimination,
     passerQuestion,
     ajouterJoueur,
     ajusterPoints,

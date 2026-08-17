@@ -5,6 +5,13 @@ import Podium from '../components/Podium.vue';
 import { reduireImage } from '../photo';
 import { genererCartePodium } from '../carte-podium';
 
+const MINIJEUX = [
+  { type: 'jauge', label: 'Jauge de précision' },
+  { type: 'funambule', label: 'Le Funambule' },
+  { type: 'feu', label: 'Feu vert / feu rouge' },
+  { type: 'compte-a-rebours', label: 'Compte à rebours invisible' },
+];
+
 const {
   phase,
   equipeEnAttente,
@@ -29,11 +36,27 @@ const {
   ajusterPoints,
   confirmerResultatVu,
   chargerQuizDisponibles,
+  miniJeuActif,
+  miniJeuResultat,
+  lancerMiniJeu,
+  terminerMiniJeu,
+  confirmerMiniJeuVu,
+  carteMystere,
+  confirmerCarteMystereVue,
 } = useJeu();
 
 const nomNouvelleEquipe = ref('');
 const photoNouvelleEquipe = ref(null);
 const ajoutEquipeOuvert = ref(false); // formulaire d'ajout d'équipe en cours de partie
+const choixMiniJeuOuvert = ref(false);
+// Choix du mode de jeu, purement local à la télécommande : le serveur n'a pas
+// besoin de le connaître tant qu'un seul mode est réellement jouable.
+const modeChoisi = ref(null); // null | 'quiz' | 'chemin'
+
+function onLancerMiniJeu(type) {
+  choixMiniJeuOuvert.value = false;
+  executer(() => lancerMiniJeu(type));
+}
 const partageEnCours = ref(false);
 const quizDisponibles = ref([]);
 const quizSelectionne = ref('');
@@ -67,7 +90,7 @@ async function executer(action) {
 }
 
 function onDemarrer() {
-  executer(() => demarrerPartie(quizSelectionne.value || undefined));
+  executer(() => demarrerPartie(quizSelectionne.value || undefined, modeChoisi.value));
 }
 
 async function onChoisirPhoto(evenement) {
@@ -150,6 +173,19 @@ function onOuvrirQuestionLibre() {
   <main class="animateur">
     <span class="marque">b<span class="dome"></span>umb<span class="dome"></span> · animateur</span>
 
+    <div v-if="carteMystere" class="carte-mystere" :class="`carte-mystere--${carteMystere.categorie}`">
+      <p class="carte-mystere-etiquette">Carte mystère</p>
+      <p class="carte-mystere-libelle">{{ carteMystere.libelle }}</p>
+      <p class="carte-mystere-description">{{ carteMystere.description }}</p>
+      <p v-if="carteMystere.cible" class="carte-mystere-cible">
+        {{ carteMystere.categorie === 'malus' ? '🎯' : '✨' }} {{ carteMystere.cible }}
+      </p>
+      <p v-if="carteMystere.cle === 'silence-radio'" class="carte-mystere-rappel">
+        À toi de désigner qui se tait et de faire respecter la règle.
+      </p>
+      <button class="btn-primary" @click="confirmerCarteMystereVue">J'ai annoncé la carte</button>
+    </div>
+
     <button
       v-if="phase !== 'accueil' && phase !== 'podium'"
       class="btn-stop"
@@ -158,8 +194,15 @@ function onOuvrirQuestionLibre() {
       Arrêter la partie
     </button>
 
-    <section v-if="phase === 'accueil'" class="bloc">
-      <h1>Nouvelle partie</h1>
+    <section v-if="phase === 'accueil' && !modeChoisi" class="bloc">
+      <h1>Choisis un mode de jeu</h1>
+      <button class="btn-primary" @click="modeChoisi = 'quiz'">🧠 Quiz classique</button>
+      <button class="btn-primary" @click="modeChoisi = 'chemin'">🌌 Chemin des étoiles</button>
+    </section>
+
+    <section v-else-if="phase === 'accueil'" class="bloc">
+      <button class="btn-lien" @click="modeChoisi = null">← Changer de mode</button>
+      <h1>{{ modeChoisi === 'chemin' ? 'Nouvelle partie — Chemin des étoiles' : 'Nouvelle partie' }}</h1>
       <label class="champ-select">
         Quiz (facultatif)
         <select v-model="quizSelectionne">
@@ -223,6 +266,26 @@ function onOuvrirQuestionLibre() {
           « {{ equipeEnAttente }} » : appuyez sur votre buzzer
         </p>
 
+        <template v-else-if="miniJeuActif">
+          <h2>🎯 Mini-jeu en cours</h2>
+          <p class="info">Jauge de précision — les équipes buzzent quand elles veulent.</p>
+          <p v-if="miniJeuActif.equipesBuzzees.length" class="info info--reponse">
+            Ont buzzé : {{ miniJeuActif.equipesBuzzees.map((e) => e.nom).join(', ') }}
+          </p>
+          <button class="btn-secondaire" @click="executer(terminerMiniJeu)">Terminer le mini-jeu</button>
+        </template>
+
+        <template v-else-if="miniJeuResultat">
+          <h2>Résultat du mini-jeu</h2>
+          <ul class="classement">
+            <li v-for="r in miniJeuResultat" :key="r.nom">
+              <span>{{ r.nom }}</span>
+              <span>+{{ r.points }} ({{ Math.round(r.precision * 100) }}%)</span>
+            </li>
+          </ul>
+          <button class="btn-primary" @click="confirmerMiniJeuVu">Continuer</button>
+        </template>
+
         <template v-else>
           <h2>Question suivante</h2>
           <template v-if="prochaineQuestion">
@@ -234,6 +297,15 @@ function onOuvrirQuestionLibre() {
             <textarea v-model="texteQuestion" placeholder="Tape la question ici..." rows="3"></textarea>
             <button class="btn-primary" @click="onOuvrirQuestionLibre">Ouvrir la question</button>
           </template>
+
+          <template v-if="choixMiniJeuOuvert">
+            <div class="choix-minijeu">
+              <button v-for="m in MINIJEUX" :key="m.type" class="btn-secondaire" @click="onLancerMiniJeu(m.type)">
+                {{ m.label }}
+              </button>
+            </div>
+          </template>
+          <button v-else class="btn-secondaire" @click="choixMiniJeuOuvert = true">🎯 Lancer un mini-jeu</button>
 
           <!-- Points d'ambiance -->
           <div v-if="classement.length" class="ambiance">
@@ -485,6 +557,31 @@ textarea {
   color: var(--cream);
   border: 1.5px solid var(--cream-faint);
 }
+.btn-mode-bientot {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 0.9rem 1.8rem;
+  border-radius: 999px;
+  border: 1.5px dashed var(--cream-faint);
+  background: transparent;
+  color: var(--cream-dim);
+  width: 100%;
+  cursor: not-allowed;
+}
+.btn-lien {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--cream-dim);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: -0.5rem;
+}
+.btn-lien:hover {
+  color: var(--cream);
+}
 .btn-terminer {
   background: transparent;
   color: var(--gold);
@@ -574,6 +671,12 @@ textarea {
   align-items: center;
   gap: 0.5rem;
 }
+.choix-minijeu {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 .ambiance {
   width: 100%;
   display: flex;
@@ -612,5 +715,52 @@ textarea {
 }
 .erreur {
   color: var(--red-hi);
+}
+.carte-mystere {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: center;
+  padding: 1.5rem;
+  border-radius: 20px;
+  background: var(--night-2);
+  border: 1.5px solid rgba(246, 178, 60, 0.4);
+}
+.carte-mystere--malus {
+  border-color: rgba(240, 57, 43, 0.5);
+}
+.carte-mystere-etiquette {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: var(--teal);
+}
+.carte-mystere-libelle {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  font-size: 1.6rem;
+  color: var(--gold);
+}
+.carte-mystere--malus .carte-mystere-libelle {
+  color: var(--red-hi);
+}
+.carte-mystere-description {
+  font-size: 1rem;
+  color: var(--cream);
+}
+.carte-mystere-cible {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.carte-mystere-rappel {
+  font-size: 0.9rem;
+  color: var(--cream-dim);
+  font-style: italic;
 }
 </style>

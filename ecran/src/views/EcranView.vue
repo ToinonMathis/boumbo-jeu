@@ -3,6 +3,15 @@ import { ref, onMounted, watch } from 'vue';
 import QRCode from 'qrcode';
 import { useJeu } from '../composables/useJeu';
 import Podium from '../components/Podium.vue';
+import MiniJeuJauge from '../components/MiniJeuJauge.vue';
+import MiniJeuFeu from '../components/MiniJeuFeu.vue';
+import MiniJeuCompteARebours from '../components/MiniJeuCompteARebours.vue';
+import CheminEtoiles from '../components/CheminEtoiles.vue';
+
+const TITRES_MINIJEUX = {
+  jauge: 'Buzz au centre !',
+  funambule: 'Le Funambule — reste au centre !',
+};
 import { jouerSonReveal, jouerSonVictoire, jouerSonDemarrage } from '../sons';
 
 const {
@@ -16,10 +25,23 @@ const {
   gagnant,
   classement,
   titreQuiz,
+  mode,
+  longueurChemin,
   joueurQuiRepond,
   photoQuiRepond,
   buzzCompteur,
+  miniJeuActif,
+  carteMystere,
+  confirmerCarteMystereVue,
 } = useJeu({ jouerSons: true });
+
+// L'écran TV est passif : pas de bouton pour fermer l'annonce, elle se
+// referme donc toute seule après un court délai de lecture.
+const DUREE_AFFICHAGE_CARTE_MS = 5000;
+watch(carteMystere, (carte) => {
+  if (!carte) return;
+  setTimeout(confirmerCarteMystereVue, DUREE_AFFICHAGE_CARTE_MS);
+});
 
 function onRevealPodium({ gagnant: estGagnant }) {
   if (estGagnant) jouerSonVictoire();
@@ -56,6 +78,15 @@ onMounted(async () => {
 <template>
   <main class="ecran">
     <div class="lueur" aria-hidden="true"></div>
+
+    <div v-if="carteMystere" class="carte-mystere-overlay" :class="`carte-mystere-overlay--${carteMystere.categorie}`">
+      <p class="carte-mystere-etiquette">Carte mystère</p>
+      <p class="carte-mystere-libelle">{{ carteMystere.libelle }}</p>
+      <p class="carte-mystere-description">{{ carteMystere.description }}</p>
+      <p v-if="carteMystere.cible" class="carte-mystere-cible">
+        {{ carteMystere.categorie === 'malus' ? '🎯' : '✨' }} {{ carteMystere.cible }}
+      </p>
+    </div>
 
     <div v-if="phase === 'accueil'" class="accueil">
       <div class="accueil-entete">
@@ -94,15 +125,36 @@ onMounted(async () => {
     </div>
 
     <template v-else>
-      <div v-if="etat === 'deconnecte'" class="message">Connexion au serveur perdue...</div>
-      <div v-else-if="etat === 'fermee' && equipeEnAttente" class="message message--ouverte">
-        {{ equipeEnAttente }} : appuie sur ton buzzer pour rejoindre
-      </div>
-      <div v-else-if="etat === 'fermee'" class="message">{{ message }}</div>
-      <div v-else-if="etat === 'attente_buzz'" class="question-en-cours">
-        <p class="question-texte">{{ questionActuelle }}</p>
-        <p class="message message--ouverte">{{ message }}</p>
-      </div>
+      <template v-if="miniJeuActif">
+        <MiniJeuFeu
+          v-if="miniJeuActif.type === 'feu'"
+          :params="miniJeuActif.params"
+          :equipes-buzzees="miniJeuActif.equipesBuzzees"
+        />
+        <MiniJeuCompteARebours
+          v-else-if="miniJeuActif.type === 'compte-a-rebours'"
+          :params="miniJeuActif.params"
+          :equipes-buzzees="miniJeuActif.equipesBuzzees"
+        />
+        <MiniJeuJauge
+          v-else
+          :params="miniJeuActif.params"
+          :equipes-buzzees="miniJeuActif.equipesBuzzees"
+          :titre="TITRES_MINIJEUX[miniJeuActif.type] || TITRES_MINIJEUX.jauge"
+        />
+      </template>
+      <div v-else-if="etat === 'deconnecte'" class="message">Connexion au serveur perdue...</div>
+      <template v-else-if="etat === 'fermee' || etat === 'attente_buzz'">
+        <div v-if="etat === 'fermee' && equipeEnAttente" class="message message--ouverte">
+          {{ equipeEnAttente }} : appuie sur ton buzzer pour rejoindre
+        </div>
+        <div v-else-if="etat === 'fermee'" class="message">{{ message }}</div>
+        <div v-else class="question-en-cours">
+          <p class="question-texte">{{ questionActuelle }}</p>
+          <p class="message message--ouverte">{{ message }}</p>
+        </div>
+        <CheminEtoiles v-if="mode === 'chemin'" :classement="classement" :longueur="longueurChemin" />
+      </template>
 
       <div v-else-if="etat === 'en_reponse'" :key="buzzCompteur" class="buzz-spectacle">
         <div class="buzz-flash" aria-hidden="true"></div>
@@ -453,6 +505,73 @@ onMounted(async () => {
   }
   .buzz-flash {
     opacity: 0;
+  }
+}
+/* Annonce de carte mystère (chemin des étoiles) : plein écran, par-dessus
+   n'importe quelle phase de jeu — se referme toute seule (TV passive). */
+.carte-mystere-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 2rem;
+  text-align: center;
+  background: radial-gradient(1200px 800px at 50% 40%, rgba(35, 18, 43, 0.97), rgba(10, 6, 18, 0.99));
+  animation: carte-mystere-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.carte-mystere-overlay--malus {
+  box-shadow: inset 0 0 200px rgba(240, 57, 43, 0.35);
+}
+.carte-mystere-overlay--bonus {
+  box-shadow: inset 0 0 200px rgba(246, 178, 60, 0.3);
+}
+.carte-mystere-etiquette {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-size: clamp(0.9rem, 1.6vw, 1.1rem);
+  color: var(--teal);
+}
+.carte-mystere-libelle {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  color: var(--gold);
+  text-shadow: 0 0 40px rgba(246, 178, 60, 0.5);
+}
+.carte-mystere-overlay--malus .carte-mystere-libelle {
+  color: var(--red-hi);
+  text-shadow: 0 0 40px rgba(240, 57, 43, 0.5);
+}
+.carte-mystere-description {
+  font-size: clamp(1.1rem, 2.2vw, 1.6rem);
+  max-width: 50ch;
+  color: var(--cream);
+}
+.carte-mystere-cible {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  font-size: clamp(1.3rem, 2.6vw, 1.9rem);
+  color: var(--cream);
+}
+@keyframes carte-mystere-in {
+  0% {
+    transform: scale(0.85) rotate(-2deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .carte-mystere-overlay {
+    animation: none;
   }
 }
 .podium-ecran {

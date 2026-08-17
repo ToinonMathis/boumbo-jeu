@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue';
-import { jouerSonQuestion, jouerSonBuzz, jouerSonCorrect, jouerSonIncorrect } from '../sons';
+import { jouerSonQuestion, jouerSonBuzz, jouerSonCorrect, jouerSonIncorrect, jouerSonReveal } from '../sons';
 
 // Déduit l'adresse du serveur depuis celle utilisée pour charger la page :
 // depuis le Mac ça donne localhost, depuis le téléphone ça donne l'IP du
@@ -25,12 +25,22 @@ export function useJeu({ jouerSons = false } = {}) {
   const questionActuelle = ref('');
   const reponseActuelle = ref('');
   const titreQuiz = ref(null);
+  const mode = ref('quiz'); // 'quiz' | 'chemin'
+  const longueurChemin = ref(null);
   const prochaineQuestion = ref(null);
   const gagnant = ref(null);
   const classement = ref([]);
   const joueurQuiRepond = ref('');
   const photoQuiRepond = ref(null);
   const buzzCompteur = ref(0); // incrémenté à chaque buzz, pour rejouer l'animation
+
+  // Mini-jeu de précision/timing (ex: jauge) en cours entre deux questions.
+  const miniJeuActif = ref(null); // { type, duree, equipesBuzzees: [{nom, position, precision}] }
+  const miniJeuResultat = ref(null); // dernier résultat affiché après un mini-jeu, jusqu'à dismissal
+
+  // Dernière carte mystère tirée sur le chemin des étoiles, affichée en
+  // annonce jusqu'à dismissal. { libelle, description, categorie, tireur, cible }
+  const carteMystere = ref(null);
 
   let source;
 
@@ -60,11 +70,21 @@ export function useJeu({ jouerSons = false } = {}) {
     questionActuelle.value = donnees.jeu.questionActuelle || '';
     reponseActuelle.value = donnees.jeu.reponseActuelle || '';
     titreQuiz.value = donnees.jeu.titreQuiz || null;
+    mode.value = donnees.jeu.mode || 'quiz';
+    longueurChemin.value = donnees.jeu.longueurChemin || null;
     prochaineQuestion.value = donnees.jeu.prochaineQuestion || null;
     classement.value = donnees.jeu.classement;
 
     joueurQuiRepond.value = donnees.jeu.joueurQuiRepond || '';
     photoQuiRepond.value = donnees.jeu.photoJoueurQuiRepond || null;
+
+    miniJeuActif.value = donnees.miniJeuActif
+      ? {
+          type: donnees.miniJeuActif.type,
+          params: donnees.miniJeuActif.params,
+          equipesBuzzees: donnees.miniJeuActif.equipesAyantBuzze.map((nom) => ({ nom })),
+        }
+      : null;
 
     if (donnees.jeu.etat === 'fermee') message.value = 'En attente de la prochaine question...';
     else if (donnees.jeu.etat === 'attente_buzz') message.value = 'À vos buzzers !';
@@ -95,8 +115,8 @@ export function useJeu({ jouerSons = false } = {}) {
     return reponse.json();
   }
 
-  function demarrerPartie(quizId) {
-    return appelApi('/api/partie/demarrer', { quizId: quizId || undefined });
+  function demarrerPartie(quizId, modeChoisi) {
+    return appelApi('/api/partie/demarrer', { quizId: quizId || undefined, mode: modeChoisi || undefined });
   }
 
   function preparerEquipe(nom, photo) {
@@ -135,6 +155,22 @@ export function useJeu({ jouerSons = false } = {}) {
 
   function ajusterPoints(equipeId, delta) {
     return appelApi('/api/points', { equipeId, delta });
+  }
+
+  function lancerMiniJeu(type) {
+    return appelApi('/api/minijeu/lancer', { type });
+  }
+
+  function terminerMiniJeu() {
+    return appelApi('/api/minijeu/terminer');
+  }
+
+  function confirmerMiniJeuVu() {
+    miniJeuResultat.value = null;
+  }
+
+  function confirmerCarteMystereVue() {
+    carteMystere.value = null;
   }
 
   // Le serveur est déjà repassé en 'fermee' juste après une bonne réponse,
@@ -221,6 +257,34 @@ export function useJeu({ jouerSons = false } = {}) {
       if (jouerSons) jouerSonIncorrect();
     });
 
+    source.addEventListener('minijeu-demarre', (evenement) => {
+      const { type, params } = JSON.parse(evenement.data);
+      miniJeuActif.value = { type, params, equipesBuzzees: [] };
+      miniJeuResultat.value = null;
+    });
+
+    source.addEventListener('minijeu-equipe-a-buzze', (evenement) => {
+      const { nom, ...resultat } = JSON.parse(evenement.data);
+      if (miniJeuActif.value) {
+        miniJeuActif.value.equipesBuzzees = [...miniJeuActif.value.equipesBuzzees, { nom, ...resultat }];
+      }
+      if (jouerSons) jouerSonBuzz();
+    });
+
+    source.addEventListener('minijeu-termine', (evenement) => {
+      miniJeuResultat.value = JSON.parse(evenement.data).resultat;
+      miniJeuActif.value = null;
+      synchroniser(); // récupère le classement général mis à jour (points d'ambiance gagnés)
+    });
+
+    // Carte mystère (chemin des étoiles) : annonce affichée jusqu'à dismissal
+    // par l'animateur — importante côté télécommande pour "Silence radio",
+    // effet purement social que seul l'animateur peut faire appliquer à voix haute.
+    source.addEventListener('carte-mystere', (evenement) => {
+      carteMystere.value = JSON.parse(evenement.data);
+      if (jouerSons) jouerSonReveal();
+    });
+
     source.addEventListener('question-terminee', (evenement) => {
       const { resultat } = JSON.parse(evenement.data);
       etat.value = 'fermee';
@@ -242,6 +306,8 @@ export function useJeu({ jouerSons = false } = {}) {
       etat.value = 'fermee';
       questionActuelle.value = '';
       gagnant.value = null;
+      mode.value = 'quiz';
+      carteMystere.value = null;
     });
 
     source.onerror = () => {
@@ -263,12 +329,17 @@ export function useJeu({ jouerSons = false } = {}) {
     questionActuelle,
     reponseActuelle,
     titreQuiz,
+    mode,
+    longueurChemin,
     prochaineQuestion,
     gagnant,
     classement,
     joueurQuiRepond,
     photoQuiRepond,
     buzzCompteur,
+    miniJeuActif,
+    miniJeuResultat,
+    carteMystere,
     demarrerPartie,
     preparerEquipe,
     lancerJeu,
@@ -280,5 +351,9 @@ export function useJeu({ jouerSons = false } = {}) {
     ajusterPoints,
     confirmerResultatVu,
     chargerQuizDisponibles,
+    lancerMiniJeu,
+    terminerMiniJeu,
+    confirmerMiniJeuVu,
+    confirmerCarteMystereVue,
   };
 }
