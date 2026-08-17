@@ -112,8 +112,8 @@ async function appelCloudPost(chemin, corps) {
 // Enregistre une soirée jouée (quiz + classement final des équipes) auprès du
 // cloud, pour alimenter les stats et classements du dashboard. L'appelant
 // l'utilise en « best-effort » : un échec (hors-ligne) ne doit pas gêner le jeu.
-async function enregistrerSoiree(quizId, classement) {
-  const soiree = await appelCloudPost('/api/soirees', { quizId: quizId || null });
+async function enregistrerSoiree(quizId, classement, mode) {
+  const soiree = await appelCloudPost('/api/soirees', { quizId: quizId || null, mode });
   await appelCloudPost(`/api/soirees/${soiree.id}/resultats`, {
     classement: classement.map((equipe) => ({ nomJoueur: equipe.nom, points: equipe.points })),
   });

@@ -141,7 +141,7 @@ function demarrer() {
 
     // Enregistre la soirée au cloud pour les stats/classements — best-effort :
     // un cloud injoignable ne doit jamais perturber la fin de partie.
-    enregistrerSoiree(quizCharge ? quizCharge.id : null, classementFinal)
+    enregistrerSoiree(quizCharge ? quizCharge.id : null, classementFinal, mode)
       .then(() => console.log('Soirée enregistrée au cloud.'))
       .catch((erreur) => console.log(`Soirée non enregistrée (${erreur.message}).`));
   }
