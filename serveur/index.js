@@ -4,7 +4,7 @@ const { creerJeu } = require('./jeu');
 const { creerPartie } = require('./partie');
 const { creerDiffuseur } = require('./diffusion');
 const { detecterEtOuvrirBuzzers } = require('./buzzers');
-const { recupererQuizDisponibles, recupererQuiz } = require('./cloud');
+const { recupererQuizDisponibles, recupererQuiz, enregistrerSoiree } = require('./cloud');
 
 const PORT_ECRAN = process.env.PORT_ECRAN || 3001;
 const DOSSIER_ECRAN = path.join(__dirname, '../ecran/dist');
@@ -61,12 +61,19 @@ function demarrer() {
   // l'animateur que par la fin automatique d'un quiz.
   function terminerPartie() {
     partieTerminee = true;
+    const classementFinal = jeu.getClassement();
     console.log('\nPartie terminée — affichage du podium.');
     afficherClassement();
     diffuser('partie-terminee', {
       classement: classementAvecPhotos(),
       titreQuiz: quizCharge ? quizCharge.titre : null,
     });
+
+    // Enregistre la soirée au cloud pour les stats/classements — best-effort :
+    // un cloud injoignable ne doit jamais perturber la fin de partie.
+    enregistrerSoiree(quizCharge ? quizCharge.id : null, classementFinal)
+      .then(() => console.log('Soirée enregistrée au cloud.'))
+      .catch((erreur) => console.log(`Soirée non enregistrée (${erreur.message}).`));
   }
 
   // Fin automatique : dès qu'un quiz chargé n'a plus de question à jouer, on

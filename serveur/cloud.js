@@ -82,4 +82,29 @@ async function recupererQuiz(id) {
   }
 }
 
-module.exports = { recupererQuizDisponibles, recupererQuiz };
+async function appelCloudPost(chemin, corps) {
+  const reponse = await fetch(`${URL_CLOUD}${chemin}`, {
+    method: 'POST',
+    headers: { 'x-cle-api': CLE_API, 'Content-Type': 'application/json' },
+    body: JSON.stringify(corps),
+  });
+
+  if (!reponse.ok) {
+    throw new Error(`Le cloud a répondu ${reponse.status}`);
+  }
+
+  return reponse.json();
+}
+
+// Enregistre une soirée jouée (quiz + classement final des équipes) auprès du
+// cloud, pour alimenter les stats et classements du dashboard. L'appelant
+// l'utilise en « best-effort » : un échec (hors-ligne) ne doit pas gêner le jeu.
+async function enregistrerSoiree(quizId, classement) {
+  const soiree = await appelCloudPost('/api/soirees', { quizId: quizId || null });
+  await appelCloudPost(`/api/soirees/${soiree.id}/resultats`, {
+    classement: classement.map((equipe) => ({ nomJoueur: equipe.nom, points: equipe.points })),
+  });
+  return soiree;
+}
+
+module.exports = { recupererQuizDisponibles, recupererQuiz, enregistrerSoiree };
