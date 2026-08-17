@@ -127,6 +127,10 @@ export function useJeu({ jouerSons = false } = {}) {
     return appelApi('/api/question/passer');
   }
 
+  function ajusterPoints(equipeId, delta) {
+    return appelApi('/api/points', { equipeId, delta });
+  }
+
   // Le serveur est déjà repassé en 'fermee' juste après une bonne réponse,
   // mais on garde le résultat affiché le temps que l'animateur le voie —
   // ce bouton révèle la question suivante (resynchronise pour la récupérer,
@@ -195,6 +199,12 @@ export function useJeu({ jouerSons = false } = {}) {
       if (jouerSons) jouerSonCorrect();
     });
 
+    // Classement mis à jour hors bonne réponse (points d'ambiance, ajout d'une
+    // équipe en cours de partie).
+    source.addEventListener('classement-maj', (evenement) => {
+      classement.value = JSON.parse(evenement.data).classement;
+    });
+
     source.addEventListener('reponse-incorrecte', (evenement) => {
       const { joueur } = JSON.parse(evenement.data);
       etat.value = 'attente_buzz';
@@ -255,6 +265,7 @@ export function useJeu({ jouerSons = false } = {}) {
     ouvrirQuestion,
     validerReponse,
     passerQuestion,
+    ajusterPoints,
     confirmerResultatVu,
     chargerQuizDisponibles,
   };

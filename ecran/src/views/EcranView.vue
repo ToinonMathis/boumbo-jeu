@@ -92,6 +92,9 @@ onMounted(async () => {
 
     <template v-else>
       <div v-if="etat === 'deconnecte'" class="message">Connexion au serveur perdue...</div>
+      <div v-else-if="etat === 'fermee' && equipeEnAttente" class="message message--ouverte">
+        {{ equipeEnAttente }} : appuie sur ton buzzer pour rejoindre
+      </div>
       <div v-else-if="etat === 'fermee'" class="message">{{ message }}</div>
       <div v-else-if="etat === 'attente_buzz' || etat === 'en_reponse'" class="question-en-cours">
         <p class="question-texte">{{ questionActuelle }}</p>

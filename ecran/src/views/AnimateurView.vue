@@ -25,12 +25,14 @@ const {
   ouvrirQuestion,
   validerReponse,
   passerQuestion,
+  ajusterPoints,
   confirmerResultatVu,
   chargerQuizDisponibles,
 } = useJeu();
 
 const nomNouvelleEquipe = ref('');
 const photoNouvelleEquipe = ref(null);
+const ajoutEquipeOuvert = ref(false); // formulaire d'ajout d'équipe en cours de partie
 const quizDisponibles = ref([]);
 const quizSelectionne = ref('');
 const texteQuestion = ref('');
@@ -73,6 +75,7 @@ function onAjouterEquipe() {
   executer(() => preparerEquipe(nom, photoNouvelleEquipe.value)).then(() => {
     nomNouvelleEquipe.value = '';
     photoNouvelleEquipe.value = null;
+    ajoutEquipeOuvert.value = false;
   });
 }
 
@@ -170,22 +173,56 @@ function onOuvrirQuestionLibre() {
     <section v-else class="bloc">
       <p v-if="titreQuiz" class="titre-quiz">Quiz : {{ titreQuiz }}</p>
 
-      <template v-if="etat === 'fermee' && prochaineQuestion">
-        <h2>Question suivante</h2>
-        <p class="question-rappel">{{ prochaineQuestion.intitule }}</p>
-        <p class="reponse-attendue">Réponse : {{ prochaineQuestion.reponse }}</p>
-        <button class="btn-primary" @click="onOuvrirQuestionDuQuiz">Ouvrir la question</button>
-      </template>
+      <template v-if="etat === 'fermee'">
+        <!-- Ajout d'une équipe en cours de partie : on attend son buzzer -->
+        <p v-if="equipeEnAttente" class="info info--ouverte">
+          « {{ equipeEnAttente }} » : appuyez sur votre buzzer
+        </p>
 
-      <template v-else-if="etat === 'fermee'">
-        <h2>Question suivante</h2>
-        <textarea v-model="texteQuestion" placeholder="Tape la question ici..." rows="3"></textarea>
-        <button class="btn-primary" @click="onOuvrirQuestionLibre">Ouvrir la question</button>
-      </template>
+        <template v-else>
+          <h2>Question suivante</h2>
+          <template v-if="prochaineQuestion">
+            <p class="question-rappel">{{ prochaineQuestion.intitule }}</p>
+            <p class="reponse-attendue">Réponse : {{ prochaineQuestion.reponse }}</p>
+            <button class="btn-primary" @click="onOuvrirQuestionDuQuiz">Ouvrir la question</button>
+          </template>
+          <template v-else>
+            <textarea v-model="texteQuestion" placeholder="Tape la question ici..." rows="3"></textarea>
+            <button class="btn-primary" @click="onOuvrirQuestionLibre">Ouvrir la question</button>
+          </template>
 
-      <button v-if="etat === 'fermee'" class="btn-terminer" @click="onTerminerPartie">
-        🏆 Afficher le podium
-      </button>
+          <!-- Points d'ambiance -->
+          <div v-if="classement.length" class="ambiance">
+            <p class="ambiance-titre">Points d'ambiance</p>
+            <div v-for="e in classement" :key="e.id" class="ambiance-ligne">
+              <span class="ambiance-nom">
+                <img v-if="e.photo" :src="e.photo" class="avatar avatar--petit" alt="" />
+                {{ e.nom }} · {{ e.points }}
+              </span>
+              <span class="ambiance-actions">
+                <button class="pas pas--petit" @click="executer(() => ajusterPoints(e.id, -1))" aria-label="Retirer un point">−</button>
+                <button class="pas pas--petit" @click="executer(() => ajusterPoints(e.id, 1))" aria-label="Ajouter un point">+</button>
+              </span>
+            </div>
+          </div>
+
+          <!-- Ajouter une équipe retardataire -->
+          <template v-if="ajoutEquipeOuvert">
+            <div class="equipe-champ">
+              <input v-model="nomNouvelleEquipe" placeholder="Nom de l'équipe" @keyup.enter="onAjouterEquipe" />
+              <button type="button" class="pas" @click="onAjouterEquipe" aria-label="Valider">✓</button>
+            </div>
+            <label class="photo-champ">
+              <input type="file" accept="image/*" capture="user" @change="onChoisirPhoto" hidden />
+              <img v-if="photoNouvelleEquipe" :src="photoNouvelleEquipe" class="avatar avatar--gros" alt="" />
+              <span v-else class="photo-placeholder">📷 Photo (facultatif)</span>
+            </label>
+          </template>
+          <button v-else class="btn-secondaire" @click="ajoutEquipeOuvert = true">＋ Ajouter une équipe</button>
+
+          <button class="btn-terminer" @click="onTerminerPartie">🏆 Afficher le podium</button>
+        </template>
+      </template>
 
       <template v-else-if="etat === 'attente_buzz'">
         <p class="question-rappel">{{ questionActuelle }}</p>
@@ -492,6 +529,42 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+.ambiance {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--cream-faint);
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+}
+.ambiance-titre {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  color: var(--cream-dim);
+  font-size: 0.95rem;
+}
+.ambiance-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.ambiance-nom {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+}
+.ambiance-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.pas--petit {
+  width: 36px;
+  height: 36px;
+  font-size: 1.2rem;
 }
 .erreur {
   color: var(--red-hi);

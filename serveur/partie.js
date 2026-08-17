@@ -21,7 +21,9 @@ function creerPartie() {
   // Prépare la prochaine équipe (nom + photo facultative) : le prochain buzzer
   // appuyé lui sera affecté.
   function preparerEquipe(nom, photo) {
-    if (etat !== 'association') return null;
+    // Autorisé pendant l'association ET en cours de partie (ajout d'une équipe
+    // retardataire entre deux questions).
+    if (etat !== 'association' && etat !== 'prete') return null;
     nomEnAttente = nom;
     photoEnAttente = photo || null;
     return { nom, photo: photoEnAttente };
@@ -39,7 +41,7 @@ function creerPartie() {
   // Associe le port à l'équipe en attente. Renvoie l'équipe créée, ou null
   // (hors association, aucune équipe préparée, ou port déjà pris).
   function tenterAssociation(port) {
-    if (etat !== 'association') return null;
+    if (etat !== 'association' && etat !== 'prete') return null;
     if (!nomEnAttente) return null;
     if (portsDejaAssocies.has(port)) return null;
 

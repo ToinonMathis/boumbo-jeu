@@ -65,6 +65,20 @@ function creerJeu(joueurs) {
     return { resultat: 'skip' };
   }
 
+  // Ajoute une équipe en cours de partie (rejoint avec 0 point).
+  function ajouterJoueur(joueur) {
+    if (classement.has(joueur.id)) return;
+    joueurs.push(joueur);
+    classement.set(joueur.id, 0);
+  }
+
+  // Ajuste manuellement les points d'une équipe (points d'ambiance de
+  // l'animateur). On ne descend jamais sous zéro.
+  function ajusterPoints(joueurId, delta) {
+    if (!classement.has(joueurId)) return;
+    classement.set(joueurId, Math.max(0, classement.get(joueurId) + delta));
+  }
+
   function getClassement() {
     return joueurs
       .map((j) => ({ id: j.id, nom: j.nom, points: classement.get(j.id) }))
@@ -84,6 +98,8 @@ function creerJeu(joueurs) {
     enregistrerBuzz,
     validerReponse,
     passerQuestion,
+    ajouterJoueur,
+    ajusterPoints,
     getClassement,
     getEtat,
     getJoueurQuiRepond,

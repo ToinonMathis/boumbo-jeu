@@ -149,6 +149,28 @@ function demarrer() {
       return;
     }
 
+    // Ajout d'une équipe retardataire en cours de partie : entre deux questions,
+    // si une équipe a été préparée et qu'un nouveau buzzer (port inconnu) est
+    // appuyé, on l'associe et on l'ajoute au jeu avec 0 point.
+    if (
+      partie.getEtat() === 'prete' &&
+      jeu &&
+      jeu.getEtat() === 'fermee' &&
+      partie.getEquipeEnAttente() &&
+      !partie.getEquipes().some((e) => e.port === path)
+    ) {
+      const nouvelle = partie.tenterAssociation(path);
+      if (nouvelle) {
+        jeu.ajouterJoueur({ id: nouvelle.id, nom: nouvelle.nom });
+        console.log(`${nouvelle.nom} rejoint la partie en cours.`);
+        diffuser('equipe-associee', {
+          equipes: partie.getEquipes().map((e) => ({ nom: e.nom, photo: e.photo || null })),
+        });
+        diffuser('classement-maj', { classement: classementAvecPhotos() });
+        return;
+      }
+    }
+
     if (!jeu) return;
 
     const equipe = partie.getEquipes().find((e) => e.port === path);
@@ -225,9 +247,12 @@ function demarrer() {
   // Prépare la prochaine équipe (avec son nom) : le prochain buzzer appuyé lui
   // sera affecté.
   route('POST', '/api/equipe/preparer', (corps, reponse) => {
-    if (partie.getEtat() !== 'association') {
+    // Pendant l'association, ou en cours de partie entre deux questions.
+    const enAssociation = partie.getEtat() === 'association';
+    const enJeuEntreQuestions = partie.getEtat() === 'prete' && jeu && jeu.getEtat() === 'fermee';
+    if (!enAssociation && !enJeuEntreQuestions) {
       reponse.writeHead(409, { 'Content-Type': 'application/json' });
-      reponse.end(JSON.stringify({ erreur: "Pas en phase d'association" }));
+      reponse.end(JSON.stringify({ erreur: 'Impossible d\'ajouter une équipe maintenant' }));
       return;
     }
 
@@ -380,6 +405,38 @@ function demarrer() {
 
     // Si c'était la dernière question du quiz, on affiche le podium.
     terminerSiQuizEpuise();
+
+    reponse.writeHead(200, { 'Content-Type': 'application/json' });
+    reponse.end(JSON.stringify({ ok: true }));
+  });
+
+  // Points d'ambiance : l'animateur ajuste manuellement les points d'une équipe
+  // (bonne vanne, meilleur nom d'équipe, etc.).
+  route('POST', '/api/points', (corps, reponse) => {
+    if (!jeu) {
+      reponse.writeHead(409, { 'Content-Type': 'application/json' });
+      reponse.end(JSON.stringify({ erreur: 'Aucune partie en cours' }));
+      return;
+    }
+
+    const equipeId = Number(corps.equipeId);
+    const delta = Number(corps.delta);
+    if (!Number.isInteger(equipeId) || !Number.isInteger(delta)) {
+      reponse.writeHead(400, { 'Content-Type': 'application/json' });
+      reponse.end(JSON.stringify({ erreur: 'equipeId ou delta invalide' }));
+      return;
+    }
+
+    const equipe = trouverEquipe(equipeId);
+    if (!equipe) {
+      reponse.writeHead(404, { 'Content-Type': 'application/json' });
+      reponse.end(JSON.stringify({ erreur: 'Équipe introuvable' }));
+      return;
+    }
+
+    jeu.ajusterPoints(equipeId, delta);
+    console.log(`Points d'ambiance : ${equipe.nom} ${delta >= 0 ? '+' : ''}${delta}`);
+    diffuser('classement-maj', { classement: classementAvecPhotos() });
 
     reponse.writeHead(200, { 'Content-Type': 'application/json' });
     reponse.end(JSON.stringify({ ok: true }));
