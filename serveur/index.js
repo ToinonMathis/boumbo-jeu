@@ -4,7 +4,7 @@ const { creerJeu } = require('./jeu');
 const { creerPartie } = require('./partie');
 const { creerDiffuseur } = require('./diffusion');
 const { detecterEtOuvrirBuzzers } = require('./buzzers');
-const { recupererQuizDisponibles, recupererQuiz, enregistrerSoiree } = require('./cloud');
+const { recupererQuizDisponibles, recupererQuiz, enregistrerSoiree, recupererEtablissement } = require('./cloud');
 
 const PORT_ECRAN = process.env.PORT_ECRAN || 3001;
 const DOSSIER_ECRAN = path.join(__dirname, '../ecran/dist');
@@ -28,6 +28,15 @@ function demarrer() {
   // sur le podium. Indépendant du mode de jeu — n'importe quel mode se termine
   // en passant par /api/partie/terminer.
   let partieTerminee = false;
+  // Nom de l'établissement (récupéré du cloud, mis en cache) — affiché sur la
+  // carte de podium partageable. Best-effort : null si jamais récupéré.
+  let nomEtablissement = null;
+  recupererEtablissement()
+    .then((etab) => {
+      nomEtablissement = etab.nom;
+      console.log(`Établissement : ${etab.nom}`);
+    })
+    .catch(() => {});
 
   function prochaineQuestionDuQuiz() {
     if (!quizCharge) return null;
@@ -196,6 +205,7 @@ function demarrer() {
     reponse.writeHead(200, { 'Content-Type': 'application/json' });
     reponse.end(JSON.stringify({
       urlAnimateur: ipLocale ? `http://${ipLocale}:${PORT_ECRAN}/animateur` : null,
+      nomEtablissement,
     }));
   });
 

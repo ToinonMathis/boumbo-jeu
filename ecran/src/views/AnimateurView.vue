@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useJeu } from '../composables/useJeu';
 import Podium from '../components/Podium.vue';
 import { reduireImage } from '../photo';
+import { genererCartePodium } from '../carte-podium';
 
 const {
   phase,
@@ -33,16 +34,26 @@ const {
 const nomNouvelleEquipe = ref('');
 const photoNouvelleEquipe = ref(null);
 const ajoutEquipeOuvert = ref(false); // formulaire d'ajout d'équipe en cours de partie
+const partageEnCours = ref(false);
 const quizDisponibles = ref([]);
 const quizSelectionne = ref('');
 const texteQuestion = ref('');
 const erreur = ref('');
+const nomEtablissement = ref(null);
+
+const URL_SERVEUR = import.meta.env.VITE_SERVEUR_URL || `http://${window.location.hostname}:3001`;
 
 onMounted(async () => {
   try {
     quizDisponibles.value = await chargerQuizDisponibles();
   } catch {
     // Pas grave : le mode "question libre" reste disponible sans le cloud.
+  }
+  try {
+    const reponse = await fetch(`${URL_SERVEUR}/api/config`);
+    nomEtablissement.value = (await reponse.json()).nomEtablissement || null;
+  } catch {
+    // Pas bloquant : la carte s'affichera sans le nom de l'établissement.
   }
 });
 
@@ -91,6 +102,36 @@ function onArreterPartie() {
 function onTerminerPartie() {
   if (!confirm('Terminer la partie et afficher le podium ?')) return;
   executer(terminerPartie);
+}
+
+// Génère la carte-image du podium et la partage (partage natif si dispo sur le
+// téléphone, sinon téléchargement).
+async function onPartagerPodium() {
+  erreur.value = '';
+  partageEnCours.value = true;
+  try {
+    const blob = await genererCartePodium(classement.value, {
+      titreQuiz: titreQuiz.value,
+      nomEtablissement: nomEtablissement.value,
+    });
+    if (!blob) throw new Error('generation');
+    const fichier = new File([blob], 'podium-boumbo.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [fichier] })) {
+      await navigator.share({ files: [fichier], title: 'Podium Boumbo' });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const lien = document.createElement('a');
+      lien.href = url;
+      lien.download = 'podium-boumbo.png';
+      lien.click();
+      URL.revokeObjectURL(url);
+    }
+  } catch (e) {
+    // Annulation du partage par l'utilisateur : pas une vraie erreur.
+    if (e.name !== 'AbortError') erreur.value = 'Impossible de générer la carte du podium.';
+  } finally {
+    partageEnCours.value = false;
+  }
 }
 
 function onOuvrirQuestionDuQuiz() {
@@ -167,7 +208,10 @@ function onOuvrirQuestionLibre() {
     <section v-else-if="phase === 'podium'" class="bloc">
       <h2>Podium 🏆</h2>
       <Podium :classement="classement" :titre="titreQuiz" :anime="false" />
-      <button class="btn-primary" @click="executer(arreterPartie)">Nouvelle partie</button>
+      <button class="btn-primary" :disabled="partageEnCours" @click="onPartagerPodium">
+        {{ partageEnCours ? 'Génération…' : '📤 Partager le podium' }}
+      </button>
+      <button class="btn-secondaire" @click="executer(arreterPartie)">Nouvelle partie</button>
     </section>
 
     <section v-else class="bloc">

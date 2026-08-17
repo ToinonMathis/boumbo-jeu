@@ -82,6 +82,19 @@ async function recupererQuiz(id) {
   }
 }
 
+// Récupère le nom de l'établissement (mis en cache pour rester dispo hors-ligne).
+async function recupererEtablissement() {
+  try {
+    const etab = await appelCloud('/api/etablissement');
+    await ecrireCache('etablissement.json', etab);
+    return etab;
+  } catch (erreur) {
+    const cache = await lireCache('etablissement.json');
+    if (cache) return cache;
+    throw erreur;
+  }
+}
+
 async function appelCloudPost(chemin, corps) {
   const reponse = await fetch(`${URL_CLOUD}${chemin}`, {
     method: 'POST',
@@ -107,4 +120,4 @@ async function enregistrerSoiree(quizId, classement) {
   return soiree;
 }
 
-module.exports = { recupererQuizDisponibles, recupererQuiz, enregistrerSoiree };
+module.exports = { recupererQuizDisponibles, recupererQuiz, enregistrerSoiree, recupererEtablissement };

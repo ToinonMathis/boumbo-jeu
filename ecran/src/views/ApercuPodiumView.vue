@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import Podium from '../components/Podium.vue';
 import { initialiserAudio, jouerSonReveal, jouerSonVictoire } from '../sons';
+import { genererCartePodium } from '../carte-podium';
 
 // Page d'aperçu du podium, sans buzzer ni serveur de jeu : elle rend le
 // composant Podium avec un classement bidon. Sert à voir/valider l'écran de
@@ -30,6 +31,20 @@ function onReveal({ gagnant }) {
   if (gagnant) jouerSonVictoire();
   else jouerSonReveal();
 }
+
+// Génère la carte de podium partageable et la télécharge (aperçu sans photos).
+async function apercuCarte() {
+  const blob = await genererCartePodium(classementDemo, {
+    titreQuiz: 'Cinéma — Grand public',
+    nomEtablissement: 'Le Comptoir des Copains',
+  });
+  const url = URL.createObjectURL(blob);
+  const lien = document.createElement('a');
+  lien.href = url;
+  lien.download = 'apercu-podium-boumbo.png';
+  lien.click();
+  URL.revokeObjectURL(url);
+}
 </script>
 
 <template>
@@ -45,6 +60,7 @@ function onReveal({ gagnant }) {
     <div v-else class="podium-ecran">
       <p class="fin-titre">Résultats de la partie</p>
       <Podium :key="cle" :classement="classementDemo" @reveal="onReveal" />
+      <button class="btn" @click="apercuCarte">📤 Générer la carte partageable</button>
       <button class="btn btn--rejouer" @click="lancer">↻ Rejouer l'animation</button>
     </div>
   </main>
