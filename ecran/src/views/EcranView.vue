@@ -1,9 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import QRCode from 'qrcode';
 import { useJeu } from '../composables/useJeu';
 import Podium from '../components/Podium.vue';
-import { jouerSonReveal, jouerSonVictoire } from '../sons';
+import { jouerSonReveal, jouerSonVictoire, jouerSonDemarrage } from '../sons';
 
 const {
   phase,
@@ -22,6 +22,11 @@ function onRevealPodium({ gagnant: estGagnant }) {
   if (estGagnant) jouerSonVictoire();
   else jouerSonReveal();
 }
+
+// Petit jingle quand on sort de la veille pour lancer une partie.
+watch(phase, (nouvelle, ancienne) => {
+  if (ancienne === 'accueil' && nouvelle === 'association') jouerSonDemarrage();
+});
 
 // TODO(temporaire) : visible par tout le monde y compris les joueurs, donc
 // n'importe qui pourrait scanner et prendre la main sur la télécommande
@@ -50,12 +55,21 @@ onMounted(async () => {
     <div class="lueur" aria-hidden="true"></div>
 
     <div v-if="phase === 'accueil'" class="accueil">
-      <span class="marque">b<span class="dome"></span>umb<span class="dome"></span></span>
-      <p class="message">En attente du lancement d'une partie...</p>
+      <div class="accueil-entete">
+        <span class="marque marque--geante">b<span class="dome"></span>umb<span class="dome"></span></span>
+        <p class="tagline">Le buzzer qui met l'ambiance</p>
+      </div>
+
+      <div class="buzzer-deco" aria-hidden="true">
+        <div class="buzzer-glow"></div>
+        <div class="buzzer"></div>
+      </div>
+
       <div v-if="qrCodeAnimateur" class="carte-qr">
         <img :src="qrCodeAnimateur" alt="QR code vers la télécommande animateur" />
-        <p>Scanne pour piloter le jeu</p>
+        <p>Scanne pour lancer une partie</p>
       </div>
+      <p v-else class="message">Prêt à jouer…</p>
     </div>
 
     <div v-else-if="phase === 'association'" class="association">
@@ -151,7 +165,87 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.75rem;
+  gap: 1.5rem;
+}
+.accueil-entete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+.marque--geante {
+  font-size: clamp(3rem, 8vw, 6rem);
+}
+.tagline {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  font-size: clamp(1rem, 2.4vw, 1.6rem);
+  color: var(--gold);
+}
+
+/* Buzzer décoratif animé (comme la vitrine), pour donner vie à la veille. */
+.buzzer-deco {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 240px;
+  height: 240px;
+  animation: bob 3.2s ease-in-out infinite;
+}
+.buzzer-glow {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(240, 57, 43, 0.5), rgba(246, 178, 60, 0.12) 45%, transparent 68%);
+  filter: blur(6px);
+  animation: pulse-glow 3.4s ease-in-out infinite;
+}
+.buzzer {
+  position: relative;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, var(--red-hi), var(--red) 46%, var(--red-lo) 100%);
+  box-shadow: 0 26px 50px -12px rgba(0, 0, 0, 0.6), 0 8px 0 0 #7c1712, 0 14px 0 0 #5c1310,
+    inset 0 -10px 26px rgba(0, 0, 0, 0.35), inset 0 14px 30px rgba(255, 255, 255, 0.35);
+}
+.buzzer::after {
+  content: '';
+  position: absolute;
+  top: 22px;
+  left: 40px;
+  width: 74px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.75), transparent 70%);
+  filter: blur(2px);
+}
+@keyframes pulse-glow {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.95;
+  }
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .buzzer-deco,
+  .buzzer-glow {
+    animation: none;
+  }
 }
 .carte-qr {
   background: var(--cream);

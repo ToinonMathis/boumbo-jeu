@@ -74,3 +74,13 @@ export function jouerSonVictoire() {
     }, i * 140);
   });
 }
+
+// Petit jingle ascendant au lancement d'une partie (sortie de la veille).
+export function jouerSonDemarrage() {
+  const notes = [440, 587, 880];
+  notes.forEach((frequence, i) => {
+    setTimeout(() => {
+      jouerTonalite({ frequenceDepart: frequence, duree: 0.16, type: 'triangle', volume: 0.3 });
+    }, i * 90);
+  });
+}
