@@ -46,7 +46,7 @@ function demarrer() {
   const { serveur, diffuser, route } = creerDiffuseur(DOSSIER_ECRAN);
   let partie = creerPartie();
   let jeu = null;
-  let mode = 'quiz'; // 'quiz' | 'chemin'
+  let mode = 'quiz'; // 'quiz' | 'chemin' | 'libre'
   let questionActuelle = '';
   let reponseActuelle = '';
   let quizCharge = null;
@@ -438,7 +438,7 @@ function demarrer() {
     quizCharge = null;
     indexQuestionCourante = 0;
     partieTerminee = false;
-    mode = corps.mode === 'chemin' ? 'chemin' : 'quiz';
+    mode = ['chemin', 'libre'].includes(corps.mode) ? corps.mode : 'quiz';
     equipesBaillonnees = new Set();
     effetsEnAttente = new Map();
     effetEnCoursDeReponse = null;

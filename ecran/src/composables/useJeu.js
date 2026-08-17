@@ -86,8 +86,9 @@ export function useJeu({ jouerSons = false } = {}) {
         }
       : null;
 
-    if (donnees.jeu.etat === 'fermee') message.value = 'En attente de la prochaine question...';
-    else if (donnees.jeu.etat === 'attente_buzz') message.value = 'À vos buzzers !';
+    if (donnees.jeu.etat === 'fermee') {
+      message.value = mode.value === 'libre' ? 'En attente du prochain tour...' : 'En attente de la prochaine question...';
+    } else if (donnees.jeu.etat === 'attente_buzz') message.value = 'À vos buzzers !';
     else if (donnees.jeu.etat === 'en_reponse') message.value = `${donnees.jeu.joueurQuiRepond} répond...`;
   }
 
@@ -289,7 +290,11 @@ export function useJeu({ jouerSons = false } = {}) {
       const { resultat } = JSON.parse(evenement.data);
       etat.value = 'fermee';
       questionActuelle.value = '';
-      message.value = resultat === 'personne' ? "Personne n'a trouvé..." : 'Question passée.';
+      if (mode.value === 'libre') {
+        message.value = resultat === 'personne' ? "Plus personne ne peut répondre..." : 'Tour annulé.';
+      } else {
+        message.value = resultat === 'personne' ? "Personne n'a trouvé..." : 'Question passée.';
+      }
       synchroniser();
     });
 

@@ -150,7 +150,7 @@ onMounted(async () => {
         </div>
         <div v-else-if="etat === 'fermee'" class="message">{{ message }}</div>
         <div v-else class="question-en-cours">
-          <p class="question-texte">{{ questionActuelle }}</p>
+          <p v-if="questionActuelle" class="question-texte">{{ questionActuelle }}</p>
           <p class="message message--ouverte">{{ message }}</p>
         </div>
         <CheminEtoiles v-if="mode === 'chemin'" :classement="classement" :longueur="longueurChemin" />

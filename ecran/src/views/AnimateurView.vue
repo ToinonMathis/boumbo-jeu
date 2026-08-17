@@ -22,6 +22,7 @@ const {
   questionActuelle,
   reponseActuelle,
   titreQuiz,
+  mode,
   prochaineQuestion,
   gagnant,
   classement,
@@ -167,6 +168,12 @@ function onOuvrirQuestionLibre() {
     texteQuestion.value = '';
   });
 }
+
+// Mode libre : aucune question n'est jamais envoyée à l'écran, ce bouton se
+// contente d'ouvrir les buzzers pour le tour que l'animateur mène lui-même.
+function onOuvrirTourLibre() {
+  executer(() => ouvrirQuestion());
+}
 </script>
 
 <template>
@@ -198,12 +205,25 @@ function onOuvrirQuestionLibre() {
       <h1>Choisis un mode de jeu</h1>
       <button class="btn-primary" @click="modeChoisi = 'quiz'">🧠 Quiz classique</button>
       <button class="btn-primary" @click="modeChoisi = 'chemin'">🌌 Chemin des étoiles</button>
+      <button class="btn-primary" @click="modeChoisi = 'libre'">🎤 Mode libre</button>
     </section>
 
     <section v-else-if="phase === 'accueil'" class="bloc">
       <button class="btn-lien" @click="modeChoisi = null">← Changer de mode</button>
-      <h1>{{ modeChoisi === 'chemin' ? 'Nouvelle partie — Chemin des étoiles' : 'Nouvelle partie' }}</h1>
-      <label class="champ-select">
+      <h1>
+        {{
+          modeChoisi === 'chemin'
+            ? 'Nouvelle partie — Chemin des étoiles'
+            : modeChoisi === 'libre'
+              ? 'Nouvelle partie — Mode libre'
+              : 'Nouvelle partie'
+        }}
+      </h1>
+      <p v-if="modeChoisi === 'libre'" class="info">
+        Aucune question ne s'affiche à l'écran : buzzer, points et podium, le
+        reste est entre tes mains.
+      </p>
+      <label v-else class="champ-select">
         Quiz (facultatif)
         <select v-model="quizSelectionne">
           <option value="">Sans quiz (questions libres)</option>
@@ -287,15 +307,22 @@ function onOuvrirQuestionLibre() {
         </template>
 
         <template v-else>
-          <h2>Question suivante</h2>
-          <template v-if="prochaineQuestion">
-            <p class="question-rappel">{{ prochaineQuestion.intitule }}</p>
-            <p class="reponse-attendue">Réponse : {{ prochaineQuestion.reponse }}</p>
-            <button class="btn-primary" @click="onOuvrirQuestionDuQuiz">Ouvrir la question</button>
+          <template v-if="mode === 'libre'">
+            <h2>Tour suivant</h2>
+            <p class="info">Anime comme tu veux, ouvre juste les buzzers quand tu es prêt.</p>
+            <button class="btn-primary" @click="onOuvrirTourLibre">🎙️ Ouvrir les buzzers</button>
           </template>
           <template v-else>
-            <textarea v-model="texteQuestion" placeholder="Tape la question ici..." rows="3"></textarea>
-            <button class="btn-primary" @click="onOuvrirQuestionLibre">Ouvrir la question</button>
+            <h2>Question suivante</h2>
+            <template v-if="prochaineQuestion">
+              <p class="question-rappel">{{ prochaineQuestion.intitule }}</p>
+              <p class="reponse-attendue">Réponse : {{ prochaineQuestion.reponse }}</p>
+              <button class="btn-primary" @click="onOuvrirQuestionDuQuiz">Ouvrir la question</button>
+            </template>
+            <template v-else>
+              <textarea v-model="texteQuestion" placeholder="Tape la question ici..." rows="3"></textarea>
+              <button class="btn-primary" @click="onOuvrirQuestionLibre">Ouvrir la question</button>
+            </template>
           </template>
 
           <template v-if="choixMiniJeuOuvert">
@@ -341,14 +368,16 @@ function onOuvrirQuestionLibre() {
       </template>
 
       <template v-else-if="etat === 'attente_buzz'">
-        <p class="question-rappel">{{ questionActuelle }}</p>
+        <p v-if="questionActuelle" class="question-rappel">{{ questionActuelle }}</p>
         <p v-if="reponseActuelle" class="reponse-attendue">Réponse : {{ reponseActuelle }}</p>
         <p class="info info--ouverte">En attente de buzz...</p>
-        <button class="btn-secondaire" @click="executer(passerQuestion)">Passer la question</button>
+        <button class="btn-secondaire" @click="executer(passerQuestion)">
+          {{ mode === 'libre' ? 'Annuler le tour' : 'Passer la question' }}
+        </button>
       </template>
 
       <template v-else-if="etat === 'en_reponse'">
-        <p class="question-rappel">{{ questionActuelle }}</p>
+        <p v-if="questionActuelle" class="question-rappel">{{ questionActuelle }}</p>
         <p v-if="reponseActuelle" class="reponse-attendue">Réponse : {{ reponseActuelle }}</p>
         <p class="info info--reponse">{{ message }}</p>
         <div class="actions-reponse">
