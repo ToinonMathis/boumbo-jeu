@@ -47,12 +47,21 @@ export function jouerSonQuestion() {
   jouerTonalite({ frequenceDepart: 660, frequenceFin: 880, duree: 0.18, type: 'triangle' });
 }
 
+// Buzzer arcade franc : un bip carré, court et percutant, comme sur un vrai
+// pupitre de jeu télé.
 export function jouerSonBuzz() {
-  jouerTonalite({ frequenceDepart: 220, frequenceFin: 90, duree: 0.3, type: 'sawtooth', volume: 0.35 });
+  jouerTonalite({ frequenceDepart: 180, frequenceFin: 130, duree: 0.16, type: 'square', volume: 0.42 });
 }
 
+// Petite fanfare (do-mi-sol) pour une bonne réponse — version courte de
+// jouerSonVictoire, qui reste réservée au dévoilement du grand gagnant.
 export function jouerSonCorrect() {
-  jouerTonalite({ frequenceDepart: 523, frequenceFin: 1046, duree: 0.35, type: 'triangle', volume: 0.3 });
+  const notes = [523, 659, 784];
+  notes.forEach((frequence, i) => {
+    setTimeout(() => {
+      jouerTonalite({ frequenceDepart: frequence, duree: 0.15, type: 'triangle', volume: 0.32 });
+    }, i * 90);
+  });
 }
 
 export function jouerSonIncorrect() {
