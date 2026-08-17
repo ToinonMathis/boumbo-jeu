@@ -127,6 +127,12 @@ mois »), à creuser plus tard :
   gérant (soirées qui remplissent, thèmes qui marchent, participation) et
   supports de promo (affiches / posts auto) pour attirer du monde les soirs
   creux.
+- **Générateur de quiz par IA** (reporté — décision de ne pas augmenter les
+  coûts au début) : le gérant décrit un thème, un LLM produit un quiz prêt à
+  jouer. Coût ~centimes/quiz, amortissable en générant la bibliothèque en
+  central et via le partage (générer une fois → réutilisé par tous, voir le
+  système public/privé déjà en place). À reprendre pour accélérer le
+  remplissage de la bibliothèque quand le budget le permettra.
 
 ## Cible hardware V1 (buzzers sans-fil)
 Aujourd'hui les buzzers sont des cartes **Arduino / Elegoo Uno R3 câblées en
