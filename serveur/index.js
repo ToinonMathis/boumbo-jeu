@@ -49,6 +49,13 @@ function demarrer() {
     console.log('------------------\n');
   }
 
+  // Classement enrichi de la vignette de chaque équipe (jointure par id), pour
+  // afficher la photo à côté du nom sur l'écran et le podium.
+  function classementAvecPhotos() {
+    const photoParId = new Map(partie.getEquipes().map((e) => [e.id, e.photo || null]));
+    return jeu.getClassement().map((j) => ({ ...j, photo: photoParId.get(j.id) || null }));
+  }
+
   // Bascule la partie sur le podium (classement final) et le diffuse à l'écran
   // comme à la télécommande. Utilisée aussi bien par l'action manuelle de
   // l'animateur que par la fin automatique d'un quiz.
@@ -57,7 +64,7 @@ function demarrer() {
     console.log('\nPartie terminée — affichage du podium.');
     afficherClassement();
     diffuser('partie-terminee', {
-      classement: jeu.getClassement(),
+      classement: classementAvecPhotos(),
       titreQuiz: quizCharge ? quizCharge.titre : null,
     });
   }
@@ -92,8 +99,9 @@ function demarrer() {
     if (partie.getEtat() === 'association') {
       return {
         phasePartie: 'association',
-        equipesAssociees: partie.getEquipes().map((e) => e.nom),
+        equipesAssociees: partie.getEquipes().map((e) => ({ nom: e.nom, photo: e.photo || null })),
         equipeEnAttente: partie.getEquipeEnAttente(),
+        photoEnAttente: partie.getPhotoEnAttente(),
       };
     }
 
@@ -101,7 +109,7 @@ function demarrer() {
       return {
         phasePartie: 'termine',
         titreQuiz: quizCharge ? quizCharge.titre : null,
-        classement: jeu.getClassement(),
+        classement: classementAvecPhotos(),
       };
     }
 
@@ -117,7 +125,7 @@ function demarrer() {
         titreQuiz: quizCharge ? quizCharge.titre : null,
         prochaineQuestion: jeu.getEtat() === 'fermee' ? prochaineQuestionDuQuiz() : null,
         joueurQuiRepond: equipeQuiRepond ? equipeQuiRepond.nom : null,
-        classement: jeu.getClassement(),
+        classement: classementAvecPhotos(),
       },
     };
   }
@@ -129,8 +137,7 @@ function demarrer() {
 
       console.log(`${resultat.nom} associée au buzzer ${path}.`);
       diffuser('equipe-associee', {
-        nom: resultat.nom,
-        equipes: partie.getEquipes().map((e) => e.nom),
+        equipes: partie.getEquipes().map((e) => ({ nom: e.nom, photo: e.photo || null })),
       });
       return;
     }
@@ -218,9 +225,13 @@ function demarrer() {
     }
 
     const nom = String(corps.nom || '').trim() || `Équipe ${partie.getEquipes().length + 1}`;
-    partie.preparerEquipe(nom);
+    // Vignette facultative (data-URL), gardée en mémoire seulement. On plafonne
+    // sa taille pour ne pas alourdir le flux SSE.
+    let photo = typeof corps.photo === 'string' ? corps.photo : null;
+    if (photo && photo.length > 200000) photo = null;
+    partie.preparerEquipe(nom, photo);
     console.log(`En attente du buzzer pour « ${nom} »…`);
-    diffuser('equipe-attendue', { nom });
+    diffuser('equipe-attendue', { nom, photo });
 
     reponse.writeHead(200, { 'Content-Type': 'application/json' });
     reponse.end(JSON.stringify({ ok: true, nom }));
@@ -324,7 +335,7 @@ function demarrer() {
     if (resultat.resultat === 'correct') {
       console.log(`Bonne réponse de ${equipe.nom} !`);
       afficherClassement();
-      diffuser('reponse-correcte', { joueur: equipe.nom, classement: jeu.getClassement() });
+      diffuser('reponse-correcte', { joueur: equipe.nom, classement: classementAvecPhotos() });
       questionActuelle = '';
       reponseActuelle = '';
     } else if (resultat.plusPersonne) {

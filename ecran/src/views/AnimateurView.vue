@@ -2,10 +2,12 @@
 import { ref, onMounted } from 'vue';
 import { useJeu } from '../composables/useJeu';
 import Podium from '../components/Podium.vue';
+import { reduireImage } from '../photo';
 
 const {
   phase,
   equipeEnAttente,
+  photoEnAttente,
   equipesAssociees,
   etat,
   message,
@@ -28,6 +30,7 @@ const {
 } = useJeu();
 
 const nomNouvelleEquipe = ref('');
+const photoNouvelleEquipe = ref(null);
 const quizDisponibles = ref([]);
 const quizSelectionne = ref('');
 const texteQuestion = ref('');
@@ -54,11 +57,22 @@ function onDemarrer() {
   executer(() => demarrerPartie(quizSelectionne.value || undefined));
 }
 
+async function onChoisirPhoto(evenement) {
+  const fichier = evenement.target.files[0];
+  if (!fichier) return;
+  try {
+    photoNouvelleEquipe.value = await reduireImage(fichier);
+  } catch {
+    erreur.value = 'Impossible de lire la photo.';
+  }
+}
+
 function onAjouterEquipe() {
   const nom = nomNouvelleEquipe.value.trim();
   if (!nom) return;
-  executer(() => preparerEquipe(nom)).then(() => {
+  executer(() => preparerEquipe(nom, photoNouvelleEquipe.value)).then(() => {
     nomNouvelleEquipe.value = '';
+    photoNouvelleEquipe.value = null;
   });
 }
 
@@ -117,11 +131,15 @@ function onOuvrirQuestionLibre() {
       <p v-if="!equipesAssociees.length && !equipeEnAttente" class="info">
         Ajoute une première équipe pour commencer.
       </p>
-      <p v-for="nom in equipesAssociees" :key="nom" class="equipe-ok">✓ {{ nom }}</p>
+      <div v-for="e in equipesAssociees" :key="e.nom" class="equipe-ok">
+        <img v-if="e.photo" :src="e.photo" class="avatar" alt="" />
+        <span>✓ {{ e.nom }}</span>
+      </div>
 
-      <p v-if="equipeEnAttente" class="info info--ouverte">
-        « {{ equipeEnAttente }} » : appuyez sur votre buzzer
-      </p>
+      <div v-if="equipeEnAttente" class="attente">
+        <img v-if="photoEnAttente" :src="photoEnAttente" class="avatar avatar--gros" alt="" />
+        <p class="info info--ouverte">« {{ equipeEnAttente }} » : appuyez sur votre buzzer</p>
+      </div>
 
       <template v-else>
         <div class="equipe-champ">
@@ -132,6 +150,11 @@ function onOuvrirQuestionLibre() {
           />
           <button type="button" class="pas" @click="onAjouterEquipe" aria-label="Ajouter l'équipe">+</button>
         </div>
+        <label class="photo-champ">
+          <input type="file" accept="image/*" capture="user" @change="onChoisirPhoto" hidden />
+          <img v-if="photoNouvelleEquipe" :src="photoNouvelleEquipe" class="avatar avatar--gros" alt="" />
+          <span v-else class="photo-placeholder">📷 Ajouter une photo (facultatif)</span>
+        </label>
         <button v-if="equipesAssociees.length" class="btn-primary" @click="onLancerJeu">
           Démarrer la partie ({{ equipesAssociees.length }})
         </button>
@@ -186,7 +209,10 @@ function onOuvrirQuestionLibre() {
         <p class="gagnant">{{ gagnant }} !</p>
         <ul class="classement">
           <li v-for="j in classement" :key="j.id">
-            <span>{{ j.nom }}</span>
+            <span class="nom-avec-avatar">
+              <img v-if="j.photo" :src="j.photo" class="avatar avatar--petit" alt="" />
+              {{ j.nom }}
+            </span>
             <span>{{ j.points }}</span>
           </li>
         </ul>
@@ -423,6 +449,49 @@ textarea {
 .equipe-ok {
   color: var(--teal);
   font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--cream-faint);
+}
+.avatar--gros {
+  width: 72px;
+  height: 72px;
+}
+.avatar--petit {
+  width: 24px;
+  height: 24px;
+}
+.attente {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+.photo-champ {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+.photo-placeholder {
+  color: var(--gold);
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.nom-avec-avatar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 .erreur {
   color: var(--red-hi);

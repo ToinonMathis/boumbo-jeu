@@ -77,6 +77,7 @@ onUnmounted(() => clearTimeout(minuteur));
         :class="{ revele: estRevele(i + 3) }"
       >
         <span class="rang">{{ i + 4 }}</span>
+        <img v-if="equipe.photo" :src="equipe.photo" class="avatar-reste" alt="" />
         <span class="nom">{{ equipe.nom }}</span>
         <span class="pts">{{ equipe.points }}</span>
       </li>
@@ -86,6 +87,7 @@ onUnmounted(() => clearTimeout(minuteur));
     <div class="estrade">
       <div v-if="top3[1]" class="marche marche--argent" :class="{ revele: estRevele(1) }">
         <div class="occupant">
+          <img v-if="top3[1].photo" :src="top3[1].photo" class="avatar-podium" alt="" />
           <span class="medaille">🥈</span>
           <span class="nom">{{ top3[1].nom }}</span>
           <span class="pts">{{ top3[1].points }} pt</span>
@@ -100,6 +102,7 @@ onUnmounted(() => clearTimeout(minuteur));
       >
         <div class="occupant">
           <span class="couronne">👑</span>
+          <img v-if="top3[0].photo" :src="top3[0].photo" class="avatar-podium avatar-podium--or" alt="" />
           <span class="medaille">🥇</span>
           <span class="nom">{{ top3[0].nom }}</span>
           <span class="pts">{{ top3[0].points }} pt</span>
@@ -109,6 +112,7 @@ onUnmounted(() => clearTimeout(minuteur));
 
       <div v-if="top3[2]" class="marche marche--bronze" :class="{ revele: estRevele(2) }">
         <div class="occupant">
+          <img v-if="top3[2].photo" :src="top3[2].photo" class="avatar-podium" alt="" />
           <span class="medaille">🥉</span>
           <span class="nom">{{ top3[2].nom }}</span>
           <span class="pts">{{ top3[2].points }} pt</span>
@@ -137,6 +141,26 @@ onUnmounted(() => clearTimeout(minuteur));
   font-size: clamp(1.2rem, 2.4vw, 1.8rem);
   color: var(--cream-dim);
   text-align: center;
+}
+.avatar-reste {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--cream-faint);
+}
+.avatar-podium {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--cream-faint);
+  margin-bottom: 0.25rem;
+}
+.avatar-podium--or {
+  width: 84px;
+  height: 84px;
+  border-color: var(--gold);
 }
 
 /* Rangs 4+ */

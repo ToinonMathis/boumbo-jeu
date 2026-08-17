@@ -8,24 +8,32 @@ function creerPartie() {
   let equipes = [];
   let portsDejaAssocies = new Set();
   let nomEnAttente = null; // nom de l'équipe en cours d'association (buzzer attendu)
+  let photoEnAttente = null; // vignette (data-URL) de l'équipe en attente, ou null
 
   function demarrer() {
     equipes = [];
     portsDejaAssocies = new Set();
     nomEnAttente = null;
+    photoEnAttente = null;
     etat = 'association';
   }
 
-  // Prépare la prochaine équipe : le prochain buzzer appuyé lui sera affecté.
-  function preparerEquipe(nom) {
+  // Prépare la prochaine équipe (nom + photo facultative) : le prochain buzzer
+  // appuyé lui sera affecté.
+  function preparerEquipe(nom, photo) {
     if (etat !== 'association') return null;
     nomEnAttente = nom;
-    return { nom };
+    photoEnAttente = photo || null;
+    return { nom, photo: photoEnAttente };
   }
 
   // Nom de l'équipe qui attend son buzzer (null si aucune n'est préparée).
   function getEquipeEnAttente() {
     return nomEnAttente;
+  }
+
+  function getPhotoEnAttente() {
+    return photoEnAttente;
   }
 
   // Associe le port à l'équipe en attente. Renvoie l'équipe créée, ou null
@@ -37,11 +45,13 @@ function creerPartie() {
 
     const id = equipes.length + 1;
     const nom = nomEnAttente;
-    equipes.push({ id, nom, port });
+    const photo = photoEnAttente;
+    equipes.push({ id, nom, port, photo });
     portsDejaAssocies.add(port);
     nomEnAttente = null;
+    photoEnAttente = null;
 
-    return { id, nom };
+    return { id, nom, photo };
   }
 
   // Passe en jeu (au moins une équipe requise).
@@ -59,6 +69,7 @@ function creerPartie() {
     getEtat: () => etat,
     getEquipes: () => equipes,
     getEquipeEnAttente,
+    getPhotoEnAttente,
   };
 }
 

@@ -16,6 +16,7 @@ export function useJeu({ jouerSons = false } = {}) {
   // 'accueil' | 'association' | 'jeu' | 'podium'
   const phase = ref('accueil');
   const equipeEnAttente = ref('');
+  const photoEnAttente = ref(null);
   const equipesAssociees = ref([]);
 
   // 'fermee' | 'attente_buzz' | 'en_reponse' | 'resultat' | 'deconnecte'
@@ -40,6 +41,7 @@ export function useJeu({ jouerSons = false } = {}) {
       phase.value = 'association';
       equipesAssociees.value = donnees.equipesAssociees;
       equipeEnAttente.value = donnees.equipeEnAttente || '';
+      photoEnAttente.value = donnees.photoEnAttente || null;
       return;
     }
 
@@ -91,8 +93,8 @@ export function useJeu({ jouerSons = false } = {}) {
     return appelApi('/api/partie/demarrer', { quizId: quizId || undefined });
   }
 
-  function preparerEquipe(nom) {
-    return appelApi('/api/equipe/preparer', { nom });
+  function preparerEquipe(nom, photo) {
+    return appelApi('/api/equipe/preparer', { nom, photo: photo || undefined });
   }
 
   function lancerJeu() {
@@ -144,18 +146,21 @@ export function useJeu({ jouerSons = false } = {}) {
       phase.value = 'association';
       equipesAssociees.value = [];
       equipeEnAttente.value = '';
+      photoEnAttente.value = null;
     });
 
     // Une équipe a été préparée : elle attend son buzzer.
     source.addEventListener('equipe-attendue', (evenement) => {
-      const { nom } = JSON.parse(evenement.data);
+      const { nom, photo } = JSON.parse(evenement.data);
       equipeEnAttente.value = nom;
+      photoEnAttente.value = photo || null;
     });
 
     source.addEventListener('equipe-associee', (evenement) => {
       const { equipes } = JSON.parse(evenement.data);
       equipesAssociees.value = equipes;
       equipeEnAttente.value = ''; // plus d'équipe en attente jusqu'au prochain ajout
+      photoEnAttente.value = null;
     });
 
     source.addEventListener('partie-prete', () => {
@@ -232,6 +237,7 @@ export function useJeu({ jouerSons = false } = {}) {
   return {
     phase,
     equipeEnAttente,
+    photoEnAttente,
     equipesAssociees,
     etat,
     message,

@@ -5,8 +5,18 @@ import { useJeu } from '../composables/useJeu';
 import Podium from '../components/Podium.vue';
 import { jouerSonReveal, jouerSonVictoire } from '../sons';
 
-const { phase, equipeEnAttente, equipesAssociees, etat, message, questionActuelle, gagnant, classement, titreQuiz } =
-  useJeu({ jouerSons: true });
+const {
+  phase,
+  equipeEnAttente,
+  photoEnAttente,
+  equipesAssociees,
+  etat,
+  message,
+  questionActuelle,
+  gagnant,
+  classement,
+  titreQuiz,
+} = useJeu({ jouerSons: true });
 
 function onRevealPodium({ gagnant: estGagnant }) {
   if (estGagnant) jouerSonVictoire();
@@ -50,8 +60,14 @@ onMounted(async () => {
 
     <div v-else-if="phase === 'association'" class="association">
       <span class="marque marque--petite">b<span class="dome"></span>umb<span class="dome"></span></span>
-      <p v-for="nom in equipesAssociees" :key="nom" class="equipe-ok">✓ {{ nom }}</p>
-      <p v-if="equipeEnAttente" class="message message--ouverte">{{ equipeEnAttente }} : appuie sur ton buzzer</p>
+      <div v-for="e in equipesAssociees" :key="e.nom" class="equipe-ok">
+        <img v-if="e.photo" :src="e.photo" class="avatar" alt="" />
+        <span>✓ {{ e.nom }}</span>
+      </div>
+      <div v-if="equipeEnAttente" class="attente-tv">
+        <img v-if="photoEnAttente" :src="photoEnAttente" class="avatar avatar--gros" alt="" />
+        <p class="message message--ouverte">{{ equipeEnAttente }} : appuie sur ton buzzer</p>
+      </div>
       <p v-else class="message">En attente des équipes…</p>
     </div>
 
@@ -73,7 +89,10 @@ onMounted(async () => {
         <p class="gagnant">{{ gagnant }} !</p>
         <ul class="classement">
           <li v-for="j in classement" :key="j.id">
-            <span>{{ j.nom }}</span>
+            <span class="nom-avec-avatar">
+              <img v-if="j.photo" :src="j.photo" class="avatar avatar--petit" alt="" />
+              {{ j.nom }}
+            </span>
             <span>{{ j.points }}</span>
           </li>
         </ul>
@@ -168,6 +187,36 @@ onMounted(async () => {
   font-size: 1.4rem;
   color: var(--teal);
   margin-bottom: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--cream-faint);
+  vertical-align: middle;
+}
+.avatar--gros {
+  width: 120px;
+  height: 120px;
+}
+.avatar--petit {
+  width: 34px;
+  height: 34px;
+}
+.attente-tv {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+.nom-avec-avatar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .question-en-cours {
