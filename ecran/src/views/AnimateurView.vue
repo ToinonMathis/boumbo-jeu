@@ -15,7 +15,9 @@ const {
   prochaineQuestion,
   gagnant,
   classement,
-  lancerPartie,
+  demarrerPartie,
+  preparerEquipe,
+  lancerJeu,
   arreterPartie,
   terminerPartie,
   ouvrirQuestion,
@@ -25,7 +27,7 @@ const {
   chargerQuizDisponibles,
 } = useJeu();
 
-const nombreEquipes = ref(2);
+const nomNouvelleEquipe = ref('');
 const quizDisponibles = ref([]);
 const quizSelectionne = ref('');
 const texteQuestion = ref('');
@@ -39,10 +41,6 @@ onMounted(async () => {
   }
 });
 
-function ajusterNombreEquipes(delta) {
-  nombreEquipes.value = Math.max(1, nombreEquipes.value + delta);
-}
-
 async function executer(action) {
   erreur.value = '';
   try {
@@ -52,8 +50,20 @@ async function executer(action) {
   }
 }
 
-function onLancerPartie() {
-  executer(() => lancerPartie(nombreEquipes.value, quizSelectionne.value || undefined));
+function onDemarrer() {
+  executer(() => demarrerPartie(quizSelectionne.value || undefined));
+}
+
+function onAjouterEquipe() {
+  const nom = nomNouvelleEquipe.value.trim();
+  if (!nom) return;
+  executer(() => preparerEquipe(nom)).then(() => {
+    nomNouvelleEquipe.value = '';
+  });
+}
+
+function onLancerJeu() {
+  executer(lancerJeu);
 }
 
 function onArreterPartie() {
@@ -91,13 +101,7 @@ function onOuvrirQuestionLibre() {
     </button>
 
     <section v-if="phase === 'accueil'" class="bloc">
-      <h1>Combien d'équipes ce soir ?</h1>
-      <div class="champ-nombre">
-        <button type="button" class="pas" @click="ajusterNombreEquipes(-1)" aria-label="Moins">−</button>
-        <input v-model.number="nombreEquipes" type="number" min="1" />
-        <button type="button" class="pas" @click="ajusterNombreEquipes(1)" aria-label="Plus">+</button>
-      </div>
-
+      <h1>Nouvelle partie</h1>
       <label class="champ-select">
         Quiz (facultatif)
         <select v-model="quizSelectionne">
@@ -105,13 +109,33 @@ function onOuvrirQuestionLibre() {
           <option v-for="q in quizDisponibles" :key="q.id" :value="q.id">{{ q.titre }}</option>
         </select>
       </label>
-
-      <button class="btn-primary" @click="onLancerPartie">Lancer la partie</button>
+      <button class="btn-primary" @click="onDemarrer">Démarrer la partie</button>
     </section>
 
     <section v-else-if="phase === 'association'" class="bloc">
+      <h2>Équipes</h2>
+      <p v-if="!equipesAssociees.length && !equipeEnAttente" class="info">
+        Ajoute une première équipe pour commencer.
+      </p>
       <p v-for="nom in equipesAssociees" :key="nom" class="equipe-ok">✓ {{ nom }}</p>
-      <p class="info">En attente : équipe {{ equipeEnAttente }} appuie sur son buzzer</p>
+
+      <p v-if="equipeEnAttente" class="info info--ouverte">
+        « {{ equipeEnAttente }} » : appuyez sur votre buzzer
+      </p>
+
+      <template v-else>
+        <div class="equipe-champ">
+          <input
+            v-model="nomNouvelleEquipe"
+            placeholder="Nom de l'équipe"
+            @keyup.enter="onAjouterEquipe"
+          />
+          <button type="button" class="pas" @click="onAjouterEquipe" aria-label="Ajouter l'équipe">+</button>
+        </div>
+        <button v-if="equipesAssociees.length" class="btn-primary" @click="onLancerJeu">
+          Démarrer la partie ({{ equipesAssociees.length }})
+        </button>
+      </template>
     </section>
 
     <section v-else-if="phase === 'podium'" class="bloc">
@@ -245,6 +269,39 @@ function onOuvrirQuestionLibre() {
   color: var(--cream);
   font-size: 1.5rem;
   cursor: pointer;
+  flex-shrink: 0;
+}
+.equipes-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}
+.equipe-champ {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.equipe-champ input {
+  flex: 1;
+  padding: 0.7rem 0.85rem;
+  font-size: 1.05rem;
+  font-family: 'Figtree', sans-serif;
+  border-radius: 14px;
+  border: 1.5px solid var(--cream-faint);
+  background: var(--night-2);
+  color: var(--cream);
+}
+.btn-ajouter {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  color: var(--gold);
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.3rem 0;
 }
 textarea {
   width: 100%;

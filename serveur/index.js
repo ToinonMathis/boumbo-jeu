@@ -128,14 +128,10 @@ function demarrer() {
       if (!resultat) return;
 
       console.log(`${resultat.nom} associée au buzzer ${path}.`);
-
-      if (resultat.complet) {
-        jeu = creerJeu(partie.getEquipes());
-        console.log('\nToutes les équipes sont associées. Prêt à jouer !');
-        diffuser('partie-prete', { equipes: partie.getEquipes().map((e) => e.nom) });
-      } else {
-        diffuser('equipe-associee', { nom: resultat.nom, equipeEnAttente: partie.getEquipeEnAttente() });
-      }
+      diffuser('equipe-associee', {
+        nom: resultat.nom,
+        equipes: partie.getEquipes().map((e) => e.nom),
+      });
       return;
     }
 
@@ -177,15 +173,10 @@ function demarrer() {
     }
   });
 
+  // Démarre une partie et passe en phase d'association : l'animateur ajoutera
+  // ensuite les équipes une par une (POST /api/equipe/preparer) puis lancera
+  // le jeu (POST /api/partie/lancer).
   route('POST', '/api/partie/demarrer', async (corps, reponse) => {
-    const nombreEquipes = Number(corps.nombreEquipes);
-
-    if (!Number.isInteger(nombreEquipes) || nombreEquipes < 1) {
-      reponse.writeHead(400, { 'Content-Type': 'application/json' });
-      reponse.end(JSON.stringify({ erreur: 'nombreEquipes invalide' }));
-      return;
-    }
-
     quizCharge = null;
     indexQuestionCourante = 0;
     partieTerminee = false;
@@ -205,17 +196,56 @@ function demarrer() {
       }
     }
 
-    partie.demarrer(nombreEquipes);
+    partie.demarrer();
     jeu = null;
     questionActuelle = '';
     reponseActuelle = '';
-    console.log(`\nNouvelle partie : ${nombreEquipes} équipe(s) à associer.`);
+    console.log('\nNouvelle partie : ajoute les équipes au fur et à mesure.');
     if (quizCharge) console.log(`Quiz chargé : "${quizCharge.titre}" (${quizCharge.questions.length} question(s)).`);
-    console.log(`Équipe ${partie.getEquipeEnAttente()} : appuie sur ton buzzer.`);
-    diffuser('partie-demarree', { equipeEnAttente: partie.getEquipeEnAttente() });
+    diffuser('partie-demarree', {});
 
     reponse.writeHead(200, { 'Content-Type': 'application/json' });
-    reponse.end(JSON.stringify({ equipeEnAttente: partie.getEquipeEnAttente() }));
+    reponse.end(JSON.stringify({ ok: true }));
+  });
+
+  // Prépare la prochaine équipe (avec son nom) : le prochain buzzer appuyé lui
+  // sera affecté.
+  route('POST', '/api/equipe/preparer', (corps, reponse) => {
+    if (partie.getEtat() !== 'association') {
+      reponse.writeHead(409, { 'Content-Type': 'application/json' });
+      reponse.end(JSON.stringify({ erreur: "Pas en phase d'association" }));
+      return;
+    }
+
+    const nom = String(corps.nom || '').trim() || `Équipe ${partie.getEquipes().length + 1}`;
+    partie.preparerEquipe(nom);
+    console.log(`En attente du buzzer pour « ${nom} »…`);
+    diffuser('equipe-attendue', { nom });
+
+    reponse.writeHead(200, { 'Content-Type': 'application/json' });
+    reponse.end(JSON.stringify({ ok: true, nom }));
+  });
+
+  // Lance le jeu une fois les équipes ajoutées (au moins une).
+  route('POST', '/api/partie/lancer', (corps, reponse) => {
+    if (partie.getEtat() !== 'association') {
+      reponse.writeHead(409, { 'Content-Type': 'application/json' });
+      reponse.end(JSON.stringify({ erreur: "Pas en phase d'association" }));
+      return;
+    }
+    if (partie.getEquipes().length < 1) {
+      reponse.writeHead(400, { 'Content-Type': 'application/json' });
+      reponse.end(JSON.stringify({ erreur: 'Ajoute au moins une équipe' }));
+      return;
+    }
+
+    partie.lancer();
+    jeu = creerJeu(partie.getEquipes());
+    console.log('\nPartie lancée. Prêt à jouer !');
+    diffuser('partie-prete', { equipes: partie.getEquipes().map((e) => e.nom) });
+
+    reponse.writeHead(200, { 'Content-Type': 'application/json' });
+    reponse.end(JSON.stringify({ ok: true }));
   });
 
   route('POST', '/api/partie/arreter', (corps, reponse) => {

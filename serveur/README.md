@@ -51,8 +51,13 @@ tout moment.
 - `GET /api/etat` — snapshot complet (phase de la partie, état du jeu,
   classement), utilisé pour resynchroniser l'écran/la télécommande à
   l'ouverture ou après une reconnexion.
-- `POST /api/partie/demarrer` `{ nombreEquipes }`
+- `POST /api/partie/demarrer` `{ quizId? }` — passe en phase d'association
+  (aucune équipe fixée à l'avance)
+- `POST /api/equipe/preparer` `{ nom }` — prépare la prochaine équipe : le
+  prochain buzzer appuyé lui sera affecté
+- `POST /api/partie/lancer` — lance le jeu une fois les équipes ajoutées
 - `POST /api/partie/arreter`
+- `POST /api/partie/terminer` — affiche le podium (clôture)
 - `POST /api/question/ouvrir` `{ texte }`
 - `POST /api/reponse` `{ correcte }`
 - `POST /api/question/passer`

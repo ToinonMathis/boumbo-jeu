@@ -1,45 +1,61 @@
 // Cycle de vie d'une partie, avant même que jeu.js n'entre en scène :
-// combien d'équipes, et quel port série appartient à quelle équipe.
-// Association par appui : le premier port qui buzze pendant la phase
-// d'association est affecté à l'équipe en attente.
+// l'animateur ajoute les équipes une par une, sans fixer leur nombre à
+// l'avance. Pour chaque équipe : il donne un nom (préparerEquipe), puis
+// l'équipe appuie sur son buzzer pour être associée. Il ajoute autant
+// d'équipes qu'il veut, puis lance le jeu quand il est prêt (lancer).
 function creerPartie() {
   let etat = 'accueil'; // 'accueil' | 'association' | 'prete'
-  let nombreEquipes = 0;
   let equipes = [];
   let portsDejaAssocies = new Set();
+  let nomEnAttente = null; // nom de l'équipe en cours d'association (buzzer attendu)
 
-  function demarrer(n) {
-    nombreEquipes = n;
+  function demarrer() {
     equipes = [];
     portsDejaAssocies = new Set();
+    nomEnAttente = null;
     etat = 'association';
   }
 
-  function getEquipeEnAttente() {
-    return equipes.length + 1;
+  // Prépare la prochaine équipe : le prochain buzzer appuyé lui sera affecté.
+  function preparerEquipe(nom) {
+    if (etat !== 'association') return null;
+    nomEnAttente = nom;
+    return { nom };
   }
 
-  // Renvoie l'équipe nouvellement associée si ce port n'était pas déjà pris,
-  // sinon null (port déjà associé, ou pas en phase d'association).
+  // Nom de l'équipe qui attend son buzzer (null si aucune n'est préparée).
+  function getEquipeEnAttente() {
+    return nomEnAttente;
+  }
+
+  // Associe le port à l'équipe en attente. Renvoie l'équipe créée, ou null
+  // (hors association, aucune équipe préparée, ou port déjà pris).
   function tenterAssociation(port) {
     if (etat !== 'association') return null;
+    if (!nomEnAttente) return null;
     if (portsDejaAssocies.has(port)) return null;
 
     const id = equipes.length + 1;
-    const nom = `Équipe ${id}`;
+    const nom = nomEnAttente;
     equipes.push({ id, nom, port });
     portsDejaAssocies.add(port);
+    nomEnAttente = null;
 
-    if (equipes.length >= nombreEquipes) {
-      etat = 'prete';
-    }
+    return { id, nom };
+  }
 
-    return { id, nom, complet: etat === 'prete' };
+  // Passe en jeu (au moins une équipe requise).
+  function lancer() {
+    if (etat !== 'association' || equipes.length < 1) return false;
+    etat = 'prete';
+    return true;
   }
 
   return {
     demarrer,
+    preparerEquipe,
     tenterAssociation,
+    lancer,
     getEtat: () => etat,
     getEquipes: () => equipes,
     getEquipeEnAttente,

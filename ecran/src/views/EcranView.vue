@@ -51,7 +51,8 @@ onMounted(async () => {
     <div v-else-if="phase === 'association'" class="association">
       <span class="marque marque--petite">b<span class="dome"></span>umb<span class="dome"></span></span>
       <p v-for="nom in equipesAssociees" :key="nom" class="equipe-ok">✓ {{ nom }}</p>
-      <p class="message message--ouverte">Équipe {{ equipeEnAttente }} : appuie sur ton buzzer</p>
+      <p v-if="equipeEnAttente" class="message message--ouverte">{{ equipeEnAttente }} : appuie sur ton buzzer</p>
+      <p v-else class="message">En attente des équipes…</p>
     </div>
 
     <div v-else-if="phase === 'podium'" class="podium-ecran">

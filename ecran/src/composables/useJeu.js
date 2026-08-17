@@ -15,7 +15,7 @@ const URL_SERVEUR = import.meta.env.VITE_SERVEUR_URL || `http://${window.locatio
 export function useJeu({ jouerSons = false } = {}) {
   // 'accueil' | 'association' | 'jeu' | 'podium'
   const phase = ref('accueil');
-  const equipeEnAttente = ref(1);
+  const equipeEnAttente = ref('');
   const equipesAssociees = ref([]);
 
   // 'fermee' | 'attente_buzz' | 'en_reponse' | 'resultat' | 'deconnecte'
@@ -39,7 +39,7 @@ export function useJeu({ jouerSons = false } = {}) {
     if (donnees.phasePartie === 'association') {
       phase.value = 'association';
       equipesAssociees.value = donnees.equipesAssociees;
-      equipeEnAttente.value = donnees.equipeEnAttente;
+      equipeEnAttente.value = donnees.equipeEnAttente || '';
       return;
     }
 
@@ -87,8 +87,16 @@ export function useJeu({ jouerSons = false } = {}) {
     return reponse.json();
   }
 
-  function lancerPartie(nombreEquipes, quizId) {
-    return appelApi('/api/partie/demarrer', { nombreEquipes, quizId: quizId || undefined });
+  function demarrerPartie(quizId) {
+    return appelApi('/api/partie/demarrer', { quizId: quizId || undefined });
+  }
+
+  function preparerEquipe(nom) {
+    return appelApi('/api/equipe/preparer', { nom });
+  }
+
+  function lancerJeu() {
+    return appelApi('/api/partie/lancer');
   }
 
   async function chargerQuizDisponibles() {
@@ -132,17 +140,22 @@ export function useJeu({ jouerSons = false } = {}) {
 
     source = new EventSource(`${URL_SERVEUR}/evenements`);
 
-    source.addEventListener('partie-demarree', (evenement) => {
-      const { equipeEnAttente: premiere } = JSON.parse(evenement.data);
+    source.addEventListener('partie-demarree', () => {
       phase.value = 'association';
       equipesAssociees.value = [];
-      equipeEnAttente.value = premiere;
+      equipeEnAttente.value = '';
+    });
+
+    // Une équipe a été préparée : elle attend son buzzer.
+    source.addEventListener('equipe-attendue', (evenement) => {
+      const { nom } = JSON.parse(evenement.data);
+      equipeEnAttente.value = nom;
     });
 
     source.addEventListener('equipe-associee', (evenement) => {
-      const { nom, equipeEnAttente: suivante } = JSON.parse(evenement.data);
-      equipesAssociees.value = [...equipesAssociees.value, nom];
-      equipeEnAttente.value = suivante;
+      const { equipes } = JSON.parse(evenement.data);
+      equipesAssociees.value = equipes;
+      equipeEnAttente.value = ''; // plus d'équipe en attente jusqu'au prochain ajout
     });
 
     source.addEventListener('partie-prete', () => {
@@ -228,7 +241,9 @@ export function useJeu({ jouerSons = false } = {}) {
     prochaineQuestion,
     gagnant,
     classement,
-    lancerPartie,
+    demarrerPartie,
+    preparerEquipe,
+    lancerJeu,
     arreterPartie,
     terminerPartie,
     ouvrirQuestion,
